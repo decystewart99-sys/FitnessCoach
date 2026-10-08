@@ -84,6 +84,16 @@ function StLbInput({ kg, onChange }: { kg: number | undefined; onChange: (kg: nu
   const init = kg === undefined ? undefined : kgToStLb(kg);
   const [st, setSt] = useState<number | undefined>(init?.st);
   const [lb, setLb] = useState<number | undefined>(init?.lb);
+  // Follow external changes (e.g. a pre-fill arriving after the first render).
+  useEffect(() => {
+    const typedKg = st === undefined && lb === undefined ? undefined : lbToKg((st ?? 0) * 14 + (lb ?? 0));
+    if (kg === undefined ? typedKg !== undefined : typedKg === undefined || Math.abs(typedKg - kg) > 0.03) {
+      const v = kg === undefined ? undefined : kgToStLb(kg);
+      setSt(v?.st);
+      setLb(v?.lb);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kg]);
   const emit = (s: number | undefined, l: number | undefined) => {
     if (s === undefined && l === undefined) onChange(undefined);
     else onChange(lbToKg((s ?? 0) * 14 + (l ?? 0)));

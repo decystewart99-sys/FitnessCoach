@@ -3,6 +3,7 @@ import { useActivePhase, useSettings } from '../hooks';
 import { addDays, DAY_NAMES, daysBetween, formatDate, today, weekday } from '../lib/dates';
 import { kcalFor, nextSessionDay, sessionsOn, type DaySessions } from '../lib/plan';
 import { RunDetail, WeekTags } from '../components/PhaseDetails';
+import { FoodCard, WeighInCard } from '../components/LogCards';
 import type { Phase, Settings } from '../types';
 
 export default function Today() {
@@ -53,22 +54,18 @@ export default function Today() {
         </p>
       )}
 
-      <h3 className="section-title">Nutrition today</h3>
-      <div className="card">
-        <div className="stat-grid">
-          <div className="stat">
-            <div className="label">Calories</div>
-            <div className="value">{kcal}</div>
-            <div className="sub">{kcal > phase.energy.targetKcal ? 'Training day – a little extra' : kcal < phase.energy.targetKcal ? 'Lighter day' : 'kcal'}</div>
-          </div>
-          <div className="stat">
-            <div className="label">Protein</div>
-            <div className="value">{phase.energy.proteinG} g</div>
-            <div className="sub">≈ {Math.round(phase.energy.proteinG / phase.profile.mealsPerDay)} g × {phase.profile.mealsPerDay} meals</div>
-          </div>
-        </div>
-        {week?.tags.includes('diet_break') && <p className="small" style={{ marginTop: 10 }}>Diet-break week: eat at maintenance.</p>}
-      </div>
+      <h3 className="section-title">Log today</h3>
+      <WeighInCard settings={settings} compact />
+      <FoodCard phase={phase} />
+      <p className="small muted" style={{ marginTop: 8 }}>
+        {kcal > phase.energy.targetKcal
+          ? `Training day – today's target includes a little extra (${kcal} kcal). `
+          : kcal < phase.energy.targetKcal
+            ? `Lighter day – ${kcal} kcal so harder days can have more. `
+            : ''}
+        Protein ≈ {Math.round(phase.energy.proteinG / phase.profile.mealsPerDay)} g × {phase.profile.mealsPerDay} meals.
+        {week?.tags.includes('diet_break') && ' Diet-break week: eat at maintenance.'}
+      </p>
 
       {!finished && (
         <>
@@ -94,7 +91,7 @@ export default function Today() {
       )}
 
       <p className="small muted center" style={{ marginTop: 24 }}>
-        Workout logging, weigh-ins and the weekly coach arrive in the next updates.
+        Workout and run logging, progress photos and the weekly coach arrive in the next updates.
       </p>
     </div>
   );

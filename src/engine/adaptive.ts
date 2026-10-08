@@ -6,8 +6,10 @@ import { addDays, daysBetween } from '../lib/dates';
 import { KCAL_PER_KG, MAX_LOSS_PCT } from './energy';
 import { roundTo } from '../lib/units';
 
-/** Smoothing factor per day. 0.1 ≈ "the last ~10 days matter most", like the Hacker's Diet trend. */
-export const TREND_ALPHA = 0.1;
+/** Level smoothing per day: ~the last 1–2 weeks of weigh-ins dominate. */
+export const TREND_ALPHA = 0.12;
+/** Slope smoothing per day: the rate of change adapts slowly so noise doesn't swing it. */
+export const TREND_BETA = 0.08;
 
 export interface TrendPoint {
   date: string;
@@ -15,22 +17,31 @@ export interface TrendPoint {
   trend: number;
 }
 
-/** Exponentially weighted moving average that copes with missed days. */
-export function weightTrend(entries: WeightEntry[], alpha = TREND_ALPHA): TrendPoint[] {
+/**
+ * Smoothed weight trend using Holt's linear (double exponential) smoothing, which tracks the
+ * rate of change as well as the level. A plain moving average lags about a week behind
+ * during steady loss and overstates current weight; this doesn't. Copes with missed days.
+ */
+export function weightTrend(entries: WeightEntry[], alpha = TREND_ALPHA, beta = TREND_BETA): TrendPoint[] {
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const out: TrendPoint[] = [];
-  let trend: number | undefined;
+  let level: number | undefined;
+  let slope = 0; // kg per day
   let prevDate: string | undefined;
   for (const e of sorted) {
-    if (trend === undefined || prevDate === undefined) {
-      trend = e.kg;
+    if (level === undefined || prevDate === undefined) {
+      level = e.kg;
     } else {
       const gap = Math.max(1, daysBetween(prevDate, e.date));
       const a = 1 - Math.pow(1 - alpha, gap);
-      trend = trend + a * (e.kg - trend);
+      const b = 1 - Math.pow(1 - beta, gap);
+      const predicted = level + slope * gap;
+      const next = predicted + a * (e.kg - predicted);
+      slope = slope + b * ((next - level) / gap - slope);
+      level = next;
     }
     prevDate = e.date;
-    out.push({ date: e.date, kg: e.kg, trend });
+    out.push({ date: e.date, kg: e.kg, trend: level });
   }
   return out;
 }

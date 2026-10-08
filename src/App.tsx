@@ -4,6 +4,7 @@ import { useActivePhase } from './hooks';
 import Onboarding from './screens/Onboarding';
 import Review from './screens/Review';
 import Today from './screens/Today';
+import WeightScreen from './screens/WeightScreen';
 import PlanScreen from './screens/PlanScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
@@ -11,6 +12,12 @@ const icons = {
   today: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M3 12h4l3-8 4 16 3-8h4" />
+    </svg>
+  ),
+  weight: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+      <path d="M8 9a6 6 0 0 1 8 0l-2.5 3" />
     </svg>
   ),
   plan: (
@@ -40,6 +47,10 @@ function MainLayout() {
         <NavLink to="/" end>
           {icons.today}
           Today
+        </NavLink>
+        <NavLink to="/weight">
+          {icons.weight}
+          Weight
         </NavLink>
         <NavLink to="/plan">
           {icons.plan}
@@ -83,6 +94,7 @@ export default function App() {
         <Route path="/setup/review" element={<Review />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<Today />} />
+          <Route path="/weight" element={<WeightScreen />} />
           <Route path="/plan" element={<PlanScreen />} />
           <Route path="/settings" element={<SettingsScreen />} />
         </Route>
