@@ -1,0 +1,128 @@
+import { Link } from 'react-router-dom';
+import { useActivePhase, useSettings } from '../hooks';
+import { addDays, DAY_NAMES, daysBetween, formatDate, today, weekday } from '../lib/dates';
+import { kcalFor, nextSessionDay, sessionsOn, type DaySessions } from '../lib/plan';
+import { RunDetail, WeekTags } from '../components/PhaseDetails';
+import type { Phase, Settings } from '../types';
+
+export default function Today() {
+  const phase = useActivePhase();
+  const settings = useSettings();
+  if (!phase) return null;
+
+  const date = today();
+  const todays = sessionsOn(phase, date);
+  const beforeStart = date < phase.startDate;
+  const finished = todays.weekIndex > phase.lengthWeeks;
+  const week = phase.weeks[todays.weekIndex - 1];
+  const next = todays.sessions.length ? undefined : nextSessionDay(phase, beforeStart ? addDays(phase.startDate, -1) : date);
+  const kcal = kcalFor(phase, date);
+  const needsBackup = !settings.lastBackupAt || daysBetween(settings.lastBackupAt.slice(0, 10), date) >= 7;
+
+  return (
+    <div className="page">
+      <p className="small muted">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+      <h1>Today</h1>
+
+      {needsBackup && daysBetween(phase.createdAt.slice(0, 10), date) >= 2 && (
+        <Link to="/settings" className="banner" style={{ textDecoration: 'none' }}>
+          💾 {settings.lastBackupAt ? "It's been a week since your last backup." : "You haven't backed up yet."} Tap to save a backup to Files.
+        </Link>
+      )}
+
+      {beforeStart && (
+        <div className="card">
+          <h2>Your phase starts {DAY_NAMES[weekday(phase.startDate)]} {formatDate(phase.startDate)}</h2>
+          <p className="muted">Until then, start using the calorie and protein targets so you're in the rhythm on day one.</p>
+        </div>
+      )}
+
+      {finished && (
+        <div className="card">
+          <h2>Phase complete 🎉</h2>
+          <p className="muted">Time to set up the next phase. Your answers carry over – just update your weight and goals.</p>
+          <Link className="btn primary block" to="/setup?edit=1">
+            Plan next phase
+          </Link>
+        </div>
+      )}
+
+      {!beforeStart && !finished && week && (
+        <p className="muted">
+          Week {todays.weekIndex} of {phase.lengthWeeks} <WeekTags tags={week.tags} />
+        </p>
+      )}
+
+      <h3 className="section-title">Nutrition today</h3>
+      <div className="card">
+        <div className="stat-grid">
+          <div className="stat">
+            <div className="label">Calories</div>
+            <div className="value">{kcal}</div>
+            <div className="sub">{kcal > phase.energy.targetKcal ? 'Training day – a little extra' : kcal < phase.energy.targetKcal ? 'Lighter day' : 'kcal'}</div>
+          </div>
+          <div className="stat">
+            <div className="label">Protein</div>
+            <div className="value">{phase.energy.proteinG} g</div>
+            <div className="sub">≈ {Math.round(phase.energy.proteinG / phase.profile.mealsPerDay)} g × {phase.profile.mealsPerDay} meals</div>
+          </div>
+        </div>
+        {week?.tags.includes('diet_break') && <p className="small" style={{ marginTop: 10 }}>Diet-break week: eat at maintenance.</p>}
+      </div>
+
+      {!finished && (
+        <>
+          <h3 className="section-title">{todays.sessions.length ? "Today's training" : 'Training'}</h3>
+          {todays.sessions.length ? (
+            <SessionList day={todays} phase={phase} settings={settings} />
+          ) : (
+            <div className="card">
+              <p>{beforeStart ? 'First session:' : 'Rest day. Next up:'}</p>
+              {next ? (
+                <>
+                  <p className="muted small">
+                    {DAY_NAMES[weekday(next.date)]} {formatDate(next.date)}
+                  </p>
+                  <SessionList day={next} phase={phase} settings={settings} />
+                </>
+              ) : (
+                <p className="muted">Nothing scheduled in the next two weeks.</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      <p className="small muted center" style={{ marginTop: 24 }}>
+        Workout logging, weigh-ins and the weekly coach arrive in the next updates.
+      </p>
+    </div>
+  );
+}
+
+function SessionList({ day, phase, settings }: { day: DaySessions; phase: Phase; settings: Settings }) {
+  const week = phase.weeks[day.weekIndex - 1];
+  return (
+    <div>
+      {day.sessions.map(({ session, run }) => {
+        const info = phase.strength.sessions.find((s) => s.id === session.id);
+        return (
+          <div key={session.id} className={`session ${session.type}`}>
+            <span className="dot" />
+            <div className="grow">
+              {run ? (
+                <RunDetail run={run} settings={settings} />
+              ) : (
+                <>
+                  <div style={{ fontWeight: 600 }}>{session.label}</div>
+                  <div className="small muted">{info?.focus}</div>
+                  {week?.tags.includes('deload') && <p className="small">Deload week: do about half your usual sets, same weights, stop well short of failure.</p>}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
