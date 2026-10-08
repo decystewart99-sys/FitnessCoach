@@ -185,6 +185,10 @@ export interface Settings {
   heightUnit: HeightUnit;
   draftProfile?: Partial<Profile>;
   lastBackupAt?: string;
+  /** Weekday (0 = Mon) for the weekly progress-photo reminder. */
+  photoDay?: number;
+  /** Include progress photos in backup files (makes them much larger). */
+  backupPhotos?: boolean;
   /** Show the "Import from Health" button (set once the user has built the iPhone Shortcut). */
   healthImport?: boolean;
   lastHealthImportAt?: string;
@@ -211,6 +215,19 @@ export interface RunLog {
   rpe?: number;
   notes?: string;
   source: 'manual' | 'garmin' | 'health';
+}
+
+export type PhotoPose = 'front' | 'side' | 'back';
+
+export interface ProgressPhoto {
+  id?: number;
+  date: string;
+  /** Monday of the photo's week – photos are grouped and compared by week. */
+  week: string;
+  pose: PhotoPose;
+  blob: Blob;
+  width: number;
+  height: number;
 }
 
 export interface NutritionEntry {

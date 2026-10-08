@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { startPlannedWorkout } from '../lib/lifting';
 import { useActivePhase, useSettings } from '../hooks';
-import { addDays, DAY_NAMES, daysBetween, formatDate, today, weekday } from '../lib/dates';
+import { addDays, DAY_NAMES, daysBetween, formatDate, mondayOf, today, weekday } from '../lib/dates';
 import { kcalFor, nextSessionDay, sessionsOn, type DaySessions } from '../lib/plan';
 import { RunDetail, WeekTags } from '../components/PhaseDetails';
 import { FoodCard, WeighInCard } from '../components/LogCards';
@@ -34,6 +34,8 @@ export default function Today() {
           💾 {settings.lastBackupAt ? "It's been a week since your last backup." : "You haven't backed up yet."} Tap to save a backup to Files.
         </Link>
       )}
+
+      <PhotoReminder photoDay={settings.photoDay ?? 6} />
 
       {beforeStart && (
         <div className="card">
@@ -172,6 +174,19 @@ function LogRunButton({ sessionId }: { sessionId: string }) {
   return (
     <Link className="btn primary small" to={`/runs/log?session=${sessionId}&date=${today()}`}>
       Log run
+    </Link>
+  );
+}
+
+/** From the chosen photo day until Sunday, nudge if this week's photos aren't done. */
+function PhotoReminder({ photoDay }: { photoDay: number }) {
+  const t = today();
+  const due = photoDay >= 0 && weekday(t) >= photoDay;
+  const count = useLiveQuery(() => (due ? db.photos.where('week').equals(mondayOf(t)).count() : Promise.resolve(3)), [due, t]);
+  if (!due || count === undefined || count >= 3) return null;
+  return (
+    <Link to="/photos" className="banner" style={{ textDecoration: 'none' }}>
+      📸 {count === 0 ? "Time for this week's progress photos." : `Progress photos: ${count} of 3 done this week.`} Tap to add them.
     </Link>
   );
 }

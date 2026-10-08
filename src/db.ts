@@ -2,7 +2,7 @@
 // When adding tables or indexes later, add a new db.version(n) block; never edit an old one.
 
 import Dexie, { type EntityTable } from 'dexie';
-import type { NutritionEntry, Phase, RunLog, Settings, WeightEntry } from './types';
+import type { NutritionEntry, Phase, ProgressPhoto, RunLog, Settings, WeightEntry } from './types';
 import type { WorkoutLog } from './engine/program';
 
 export interface SwapEntry {
@@ -19,6 +19,7 @@ export class CoachDB extends Dexie {
   workouts!: EntityTable<WorkoutLog, 'id'>;
   swaps!: EntityTable<SwapEntry, 'key'>;
   runs!: EntityTable<RunLog, 'id'>;
+  photos!: EntityTable<ProgressPhoto, 'id'>;
 
   constructor() {
     super('fitness-coach');
@@ -34,6 +35,9 @@ export class CoachDB extends Dexie {
     });
     this.version(3).stores({
       runs: '++id, date, sessionId',
+    });
+    this.version(4).stores({
+      photos: '++id, week, date, [week+pose]',
     });
   }
 }

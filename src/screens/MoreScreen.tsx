@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 const ITEMS = [
+  { to: '/photos', title: 'Progress photos', sub: 'Weekly front, side and back photos with side-by-side comparison' },
   { to: '/plan', title: 'Plan', sub: 'Your phase: targets, schedule, running progression and the reasoning' },
   { to: '/settings', title: 'Settings', sub: 'Units, questionnaire, backups' },
   { to: '/settings/health', title: 'Import from Apple Health', sub: 'MyFitnessPal food totals and weight via an iPhone Shortcut' },
@@ -21,9 +22,6 @@ export default function MoreScreen() {
           </Link>
         ))}
       </div>
-      <p className="small muted center" style={{ marginTop: 16 }}>
-        Progress photos are coming next.
-      </p>
     </div>
   );
 }

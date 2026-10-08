@@ -1,7 +1,9 @@
 // Full-data backup as a single JSON file, for safekeeping and for moving to a new phone.
 
-import { db, updateSettings } from '../db';
+import { db, getSettings, updateSettings } from '../db';
 import { today } from './dates';
+import { decodePhoto, encodePhoto, type EncodedPhoto } from './photos';
+import type { ProgressPhoto } from '../types';
 
 const FORMAT = 'fitness-coach-backup';
 const FORMAT_VERSION = 1;
@@ -13,9 +15,16 @@ interface BackupFile {
   tables: Record<string, unknown[]>;
 }
 
-export async function buildBackup(): Promise<BackupFile> {
+/** Photos are only included when asked – they make the file much bigger. */
+export async function buildBackup(includePhotos = false): Promise<BackupFile> {
   const tables: Record<string, unknown[]> = {};
-  for (const table of db.tables) tables[table.name] = await table.toArray();
+  for (const table of db.tables) {
+    if (table.name === 'photos') {
+      if (includePhotos) tables.photos = await Promise.all((await db.photos.toArray()).map(encodePhoto));
+      continue;
+    }
+    tables[table.name] = await table.toArray();
+  }
   return { format: FORMAT, formatVersion: FORMAT_VERSION, exportedAt: new Date().toISOString(), tables };
 }
 
@@ -24,7 +33,7 @@ export async function buildBackup(): Promise<BackupFile> {
  * falling back to a normal download on desktop browsers.
  */
 export async function exportBackup(): Promise<'shared' | 'downloaded' | 'cancelled'> {
-  const data = await buildBackup();
+  const data = await buildBackup(!!(await getSettings()).backupPhotos);
   const name = `fitness-coach-backup-${today()}.json`;
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const file = new File([blob], name, { type: 'application/json' });
@@ -64,13 +73,19 @@ export async function readBackupFile(file: File): Promise<BackupFile> {
   return data;
 }
 
-/** Replaces everything on this device with the backup's contents. */
+/**
+ * Replaces the data on this device with the backup's contents – but only for the kinds of data
+ * the backup contains. A backup saved without photos leaves the photos on this phone alone.
+ */
 export async function restoreBackup(data: BackupFile): Promise<void> {
   await db.transaction('rw', db.tables, async () => {
     for (const table of db.tables) {
-      await table.clear();
       const rows = data.tables[table.name];
-      if (Array.isArray(rows) && rows.length) await table.bulkPut(rows);
+      if (!Array.isArray(rows)) continue;
+      await table.clear();
+      if (!rows.length) continue;
+      if (table.name === 'photos') await db.photos.bulkPut((rows as EncodedPhoto[]).map(decodePhoto) as ProgressPhoto[]);
+      else await table.bulkPut(rows);
     }
   });
 }

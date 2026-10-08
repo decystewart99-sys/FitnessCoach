@@ -23,7 +23,7 @@ Everything is stored locally on the device. Use **Settings → Save a backup** r
 - [x] Import food totals + weight from Apple Health (iPhone Shortcut)
 - [x] Lifting: programme builder, workout logger, rest timer, progression, lift analytics
 - [x] Running log + analytics (time trials update training paces)
-- [ ] Weekly progress photos
+- [x] Weekly progress photos (compare weeks, optional in backups)
 - [ ] (c) Weekly coach adjustments, rescheduling
 - [ ] (d) Analytics and weekly check-in
 - [ ] (e) Garmin CSV / Garmin data-export import, calendar export
