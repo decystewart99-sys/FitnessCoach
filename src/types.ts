@@ -185,6 +185,9 @@ export interface Settings {
   heightUnit: HeightUnit;
   draftProfile?: Partial<Profile>;
   lastBackupAt?: string;
+  /** Show the "Import from Health" button (set once the user has built the iPhone Shortcut). */
+  healthImport?: boolean;
+  lastHealthImportAt?: string;
 }
 
 export interface WeightEntry {

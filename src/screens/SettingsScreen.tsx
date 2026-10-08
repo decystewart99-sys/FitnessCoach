@@ -94,6 +94,16 @@ export default function SettingsScreen() {
         <p className="small muted">Your current answers are filled in. At the end you can update the current phase or start a new one.</p>
       </div>
 
+      <h3 className="section-title">Connections</h3>
+      <div className="card stack">
+        <button className="btn block" onClick={() => navigate('/settings/health')}>
+          Import from MyFitnessPal / Apple Health
+        </button>
+        <p className="small muted">
+          {settings.lastHealthImportAt ? `Last import: ${new Date(settings.lastHealthImportAt).toLocaleString()}` : 'Set up an iPhone Shortcut to bring in food totals and weight.'}
+        </p>
+      </div>
+
       <h3 className="section-title">Backup</h3>
       <div className="card stack">
         <p className="small">

@@ -7,6 +7,8 @@ import Today from './screens/Today';
 import WeightScreen from './screens/WeightScreen';
 import PlanScreen from './screens/PlanScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import HealthSetup from './screens/HealthSetup';
+import { ImportLinkScreen } from './components/HealthImport';
 
 const icons = {
   today: (
@@ -92,6 +94,8 @@ export default function App() {
       <Routes>
         <Route path="/setup" element={<Onboarding />} />
         <Route path="/setup/review" element={<Review />} />
+        <Route path="/import" element={<ImportLinkScreen />} />
+        <Route path="/settings/health" element={<HealthSetup />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<Today />} />
           <Route path="/weight" element={<WeightScreen />} />

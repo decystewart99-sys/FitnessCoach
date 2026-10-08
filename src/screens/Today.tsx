@@ -4,6 +4,7 @@ import { addDays, DAY_NAMES, daysBetween, formatDate, today, weekday } from '../
 import { kcalFor, nextSessionDay, sessionsOn, type DaySessions } from '../lib/plan';
 import { RunDetail, WeekTags } from '../components/PhaseDetails';
 import { FoodCard, WeighInCard } from '../components/LogCards';
+import { HealthImportButton } from '../components/HealthImport';
 import type { Phase, Settings } from '../types';
 
 export default function Today() {
@@ -57,6 +58,13 @@ export default function Today() {
       <h3 className="section-title">Log today</h3>
       <WeighInCard settings={settings} compact />
       <FoodCard phase={phase} />
+      {settings.healthImport ? (
+        <HealthImportButton />
+      ) : (
+        <p className="small" style={{ marginTop: 8 }}>
+          <Link to="/settings/health">Auto-import food from MyFitnessPal →</Link>
+        </p>
+      )}
       <p className="small muted" style={{ marginTop: 8 }}>
         {kcal > phase.energy.targetKcal
           ? `Training day – today's target includes a little extra (${kcal} kcal). `
