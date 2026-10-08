@@ -8,6 +8,9 @@ import WeightScreen from './screens/WeightScreen';
 import LiftsScreen from './screens/LiftsScreen';
 import WorkoutScreen from './screens/WorkoutScreen';
 import ExerciseScreen from './screens/ExerciseScreen';
+import RunsScreen from './screens/RunsScreen';
+import RunForm from './screens/RunForm';
+import MoreScreen from './screens/MoreScreen';
 import PlanScreen from './screens/PlanScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import HealthSetup from './screens/HealthSetup';
@@ -28,6 +31,19 @@ const icons = {
   lifts: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M6 7v10M3 9v6M18 7v10M21 9v6M6 12h12" />
+    </svg>
+  ),
+  runs: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="14" cy="4" r="2" />
+      <path d="M9 21l2-6 3 2v5M7 12l3-4 4 1 2 4 3 1M10 8l-2 6" />
+    </svg>
+  ),
+  more: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <circle cx="5" cy="12" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="19" cy="12" r="1.5" />
     </svg>
   ),
   plan: (
@@ -66,13 +82,13 @@ function MainLayout() {
           {icons.lifts}
           Lifts
         </NavLink>
-        <NavLink to="/plan">
-          {icons.plan}
-          Plan
+        <NavLink to="/runs">
+          {icons.runs}
+          Runs
         </NavLink>
-        <NavLink to="/settings">
-          {icons.settings}
-          Settings
+        <NavLink to="/more" className={() => (['/more', '/plan', '/settings'].some((p) => location.pathname.startsWith(p)) ? 'active' : '')}>
+          {icons.more}
+          More
         </NavLink>
       </nav>
     </>
@@ -108,12 +124,16 @@ export default function App() {
         <Route path="/setup/review" element={<Review />} />
         <Route path="/import" element={<ImportLinkScreen />} />
         <Route path="/lifts/workout/:id" element={<WorkoutScreen />} />
+        <Route path="/runs/log" element={<RunForm />} />
+        <Route path="/runs/edit/:id" element={<RunForm />} />
         <Route path="/lifts/exercise/:exerciseId" element={<ExerciseScreen />} />
         <Route path="/settings/health" element={<HealthSetup />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<Today />} />
           <Route path="/weight" element={<WeightScreen />} />
           <Route path="/lifts" element={<LiftsScreen />} />
+          <Route path="/runs" element={<RunsScreen />} />
+          <Route path="/more" element={<MoreScreen />} />
           <Route path="/plan" element={<PlanScreen />} />
           <Route path="/settings" element={<SettingsScreen />} />
         </Route>

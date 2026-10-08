@@ -22,7 +22,7 @@ Everything is stored locally on the device. Use **Settings → Save a backup** r
 - [x] Weight tab: daily weigh-ins, food log, trend chart, progress stats
 - [x] Import food totals + weight from Apple Health (iPhone Shortcut)
 - [x] Lifting: programme builder, workout logger, rest timer, progression, lift analytics
-- [ ] Running log + analytics
+- [x] Running log + analytics (time trials update training paces)
 - [ ] Weekly progress photos
 - [ ] (c) Weekly coach adjustments, rescheduling
 - [ ] (d) Analytics and weekly check-in

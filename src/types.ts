@@ -195,6 +195,24 @@ export interface WeightEntry {
   kg: number;
 }
 
+export type RunLogKind = 'easy' | 'long' | 'runwalk' | 'fartlek' | 'tempo' | 'intervals' | 'timetrial' | 'race' | 'other';
+
+export interface RunLog {
+  id?: number;
+  date: string;
+  /** Planned session this run fulfils, if any. */
+  sessionId?: string;
+  kind: RunLogKind;
+  distanceKm?: number;
+  durationSec: number;
+  avgHr?: number;
+  maxHr?: number;
+  /** Effort 1–10. */
+  rpe?: number;
+  notes?: string;
+  source: 'manual' | 'garmin' | 'health';
+}
+
 export interface NutritionEntry {
   date: string;
   kcal: number;

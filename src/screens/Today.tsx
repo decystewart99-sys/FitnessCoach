@@ -119,7 +119,10 @@ function SessionList({ day, phase, settings }: { day: DaySessions; phase: Phase;
             <span className="dot" />
             <div className="grow">
               {run ? (
-                <RunDetail run={run} settings={settings} />
+                <>
+                  <RunDetail run={run} settings={settings} />
+                  {day.date === today() && <LogRunButton sessionId={session.id} />}
+                </>
               ) : (
                 <>
                   <div style={{ fontWeight: 600 }}>{session.label}</div>
@@ -154,5 +157,21 @@ function StartWorkoutButton({ phase, sessionId, settings }: { phase: Phase; sess
     >
       {existing ? 'Resume workout' : 'Start workout'}
     </button>
+  );
+}
+
+function LogRunButton({ sessionId }: { sessionId: string }) {
+  const logged = useLiveQuery(async () => (await db.runs.where('date').equals(today()).toArray()).find((r) => r.sessionId === sessionId), [sessionId]);
+  if (logged) {
+    return (
+      <Link className="btn small" to={`/runs/edit/${logged.id}`}>
+        ✓ Logged – view run
+      </Link>
+    );
+  }
+  return (
+    <Link className="btn primary small" to={`/runs/log?session=${sessionId}&date=${today()}`}>
+      Log run
+    </Link>
   );
 }
