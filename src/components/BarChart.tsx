@@ -82,7 +82,8 @@ export default function BarChart({ data, formatValue, formatTick, ariaLabel, hei
           );
         })}
         {data.length > 0 && data[last].value > 0 && hover === undefined && (
-          <text x={x(last) + barW / 2} y={y(data[last].value) - 5} className="chart-tick" textAnchor="middle" style={{ fill: 'var(--text)', fontWeight: 600 }}>
+          // Right-aligned to the last bar so long values never run off the edge.
+          <text x={x(last) + barW} y={y(data[last].value) - 5} className="chart-tick" textAnchor="end" style={{ fill: 'var(--text)', fontWeight: 600 }}>
             {formatValue(data[last].value)}
           </text>
         )}

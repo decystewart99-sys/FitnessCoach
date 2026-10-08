@@ -26,7 +26,7 @@ Everything is stored locally on the device. Use **Settings → Save a backup** r
 - [x] Weekly progress photos (compare weeks, optional in backups)
 - [x] (c) Weekly coach adjustments, deload/diet-break suggestions, missed-session rescheduling
 - [x] (d) Weekly check-in, calories vs target, maintenance estimate over time
-- [ ] (e) Garmin CSV / Garmin data-export import, calendar export
+- [x] (e) Garmin activities CSV import, Garmin health data (steps, resting HR, sleep) via Apple Health, calendar export
 - [ ] (f) Android app with Health Connect (when switching phones)
 
 ## Development

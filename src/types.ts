@@ -239,6 +239,14 @@ export interface RunLog {
   source: 'manual' | 'garmin' | 'health';
 }
 
+/** Daily wellness numbers (from Garmin via Apple Health, or entered by hand). */
+export interface HealthDay {
+  date: string;
+  steps?: number;
+  restingHr?: number;
+  sleepMin?: number;
+}
+
 export type PhotoPose = 'front' | 'side' | 'back';
 
 export interface ProgressPhoto {

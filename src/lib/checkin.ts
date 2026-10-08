@@ -1,7 +1,8 @@
 // Weekly check-in: reviews the previous phase-week (weight, food, training, performance),
 // runs the adaptive calorie coach, and suggests a deload or diet break when warranted.
 
-import type { CheckIn, NutritionEntry, Phase, RunLog, WeightEntry } from '../types';
+import type { CheckIn, HealthDay, NutritionEntry, Phase, RunLog, WeightEntry } from '../types';
+import { recoverySignals } from './recovery';
 import { weeklyCheckIn, type CoachResult } from '../engine/adaptive';
 import { exerciseHistory, isStalled, type WorkoutLog } from '../engine/program';
 import { macrosFor } from '../engine/energy';
@@ -49,11 +50,12 @@ export interface ReviewInput {
   nutrition: NutritionEntry[];
   workouts: WorkoutLog[]; // finished
   runs: RunLog[];
+  health?: HealthDay[];
 }
 
 const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : undefined);
 
-export function buildReview({ phase, today, checkins, weights, nutrition, workouts, runs }: ReviewInput): Review {
+export function buildReview({ phase, today, checkins, weights, nutrition, workouts, runs, health = [] }: ReviewInput): Review {
   const W = currentWeekIndex(phase, today);
   const reviewed = weekRange(phase, W - 1);
   const asOf = weekRange(phase, W).from;
@@ -146,6 +148,7 @@ export function buildReview({ phase, today, checkins, weights, nutrition, workou
         : 'Easy-run pace has slowed recently. Check sleep, stress and fuelling before hard sessions.',
     );
   }
+  notes.push(...recoverySignals(health, asOf).notes);
   if (training.strengthDone < training.strengthPlanned || training.runsDone < training.runsPlanned) {
     notes.push('Some sessions were missed last week. That\'s normal – the plan doesn\'t make you catch up; just pick up from this week.');
   }

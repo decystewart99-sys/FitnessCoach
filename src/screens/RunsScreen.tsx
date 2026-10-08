@@ -64,6 +64,9 @@ export default function RunsScreen() {
           + Log a run
         </Link>
       </div>
+      <Link className="btn link small" to="/import/garmin">
+        Import runs from Garmin →
+      </Link>
 
       {nextUp && (
         <div className="card" style={{ marginTop: 12 }}>

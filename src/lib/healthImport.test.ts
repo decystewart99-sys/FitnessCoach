@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractParams, parseEnergy, parseImport, parseNumber, parseWeight } from './healthImport';
+import { extractParams, parseEnergy, parseImport, parseNumber, parseSleep, parseWeight } from './healthImport';
 
 describe('lenient number parsing', () => {
   it('handles thousands separators and decimal commas', () => {
@@ -26,6 +26,27 @@ describe('lenient number parsing', () => {
     expect(parseWeight('14.86 st')).toBeCloseTo(94.37, 1);
     expect(parseWeight('14 st 12.1 lb')).toBeCloseTo(94.39, 1);
     expect(parseWeight('14.86', 'st')).toBeCloseTo(94.37, 1);
+  });
+});
+
+describe('health fields', () => {
+  it('parses sleep in any format Shortcuts might produce', () => {
+    expect(parseSleep('7.5 hr')).toBe(450);
+    expect(parseSleep('7.5')).toBe(450);
+    expect(parseSleep('450 min')).toBe(450);
+    expect(parseSleep('27000 s')).toBe(450);
+    expect(parseSleep('27000')).toBe(450);
+    expect(parseSleep('7:30')).toBe(450);
+  });
+
+  it('imports steps, resting HR and sleep, and accepts a health-only payload', () => {
+    const r = parseImport(new URLSearchParams('date=2026-10-07&kcal=&weight=&steps=8,431&rhr=54 bpm&sleep=7:05'), '2026-10-08');
+    expect(r).toEqual({ date: '2026-10-07', steps: 8431, restingHr: 54, sleepMin: 425 });
+  });
+
+  it('drops implausible health values', () => {
+    const r = parseImport(new URLSearchParams('steps=9000&rhr=300&sleep=20 min'), '2026-10-08');
+    expect(r).toEqual({ date: '2026-10-08', steps: 9000 });
   });
 });
 

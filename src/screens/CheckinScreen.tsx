@@ -21,6 +21,7 @@ export default function CheckinScreen() {
     nutrition: await db.nutrition.toArray(),
     workouts: (await db.workouts.toArray()).filter((w) => w.finishedAt),
     runs: await db.runs.toArray(),
+    health: await db.health.toArray(),
   }));
   const [declined, setDeclined] = useState<Set<string>>(new Set());
   const [done, setDone] = useState(false);

@@ -13,6 +13,9 @@ import RunForm from './screens/RunForm';
 import MoreScreen from './screens/MoreScreen';
 import PhotosScreen from './screens/PhotosScreen';
 import CheckinScreen from './screens/CheckinScreen';
+import GarminImportScreen from './screens/GarminImportScreen';
+import HealthScreen from './screens/HealthScreen';
+import CalendarScreen from './screens/CalendarScreen';
 import PlanScreen from './screens/PlanScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import HealthSetup from './screens/HealthSetup';
@@ -128,6 +131,9 @@ export default function App() {
         <Route path="/lifts/workout/:id" element={<WorkoutScreen />} />
         <Route path="/photos" element={<PhotosScreen />} />
         <Route path="/checkin" element={<CheckinScreen />} />
+        <Route path="/import/garmin" element={<GarminImportScreen />} />
+        <Route path="/health" element={<HealthScreen />} />
+        <Route path="/calendar" element={<CalendarScreen />} />
         <Route path="/runs/log" element={<RunForm />} />
         <Route path="/runs/edit/:id" element={<RunForm />} />
         <Route path="/lifts/exercise/:exerciseId" element={<ExerciseScreen />} />

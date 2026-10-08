@@ -73,10 +73,28 @@ export default function HealthSetup() {
             result <b>Weight</b>. (Skip this if you weigh in by hand.)
           </li>
           <li>
+            <b>Garmin health data (optional):</b>
+            <ul>
+              <li>
+                <b>Find Health Samples</b> → <b>Steps</b>, Start Date is today → <b>Calculate Statistics</b> Sum → rename <b>Steps</b>.
+              </li>
+              <li>
+                <b>Find Health Samples</b> → <b>Resting Heart Rate</b>, Start Date is today, Sort Latest First, Limit 1 → rename <b>Resting HR</b>.
+              </li>
+              <li>
+                <b>Find Health Samples</b> → <b>Sleep</b> (Sleep Analysis), Start Date <b>is in the last 1 day</b> → add a filter <b>Value is not In Bed</b> (or "Asleep" types only) →{' '}
+                <b>Get Details of Health Sample</b> → <b>Duration</b> → <b>Calculate Statistics</b> Sum → rename <b>Sleep</b>.
+              </li>
+            </ul>
+            <span className="small muted">
+              In <b>Garmin Connect</b> → More → Settings → <b>Connected Apps</b> → <b>Apple Health</b>, switch on sharing for steps, heart rate and sleep first.
+            </span>
+          </li>
+          <li>
             <b>Format Date</b> → date <b>Current Date</b>, Date Format <b>Custom</b>, format string <b>yyyy-MM-dd</b>. Rename the result <b>Day</b>.
           </li>
           <li>
-            <b>Text</b> → paste the template below, then replace each <code>[…]</code> by deleting it and tapping the matching variable (Day, Calories, Protein, Carbs, Fat, Weight)
+            <b>Text</b> → paste the template below, then replace each <code>[…]</code> by deleting it and tapping the matching variable (Day, Calories, Protein, Carbs, Fat, Weight, Steps, Resting HR, Sleep – leave any you skipped empty)
             in the bar above the keyboard.
             <div className="code-box">{SHORTCUT_TEMPLATE}</div>
             <button className="btn small" onClick={copyTemplate}>
