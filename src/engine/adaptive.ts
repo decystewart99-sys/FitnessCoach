@@ -72,6 +72,8 @@ export interface CoachInput {
   /** Days since the phase started – the first ~2 weeks include water/glycogen loss. */
   daysIntoPhase: number;
   dietBreakNextWeek: boolean;
+  /** The week just reviewed was a diet break (intake was meant to be at maintenance). */
+  lastWeekDietBreak?: boolean;
 }
 
 export type CoachSuggestion = 'diet_break' | 'none';
@@ -86,7 +88,10 @@ export interface CoachResult {
   avgIntake?: number;
   loggedDays: number;
   weighIns: number;
+  /** Dieting target (used for normal weeks). */
   newTarget: number;
+  /** Target for the coming week – maintenance if it's a diet break, else newTarget. */
+  weekTarget: number;
   change: number;
   stalled: boolean;
   suggestion: CoachSuggestion;
@@ -116,7 +121,8 @@ export function weeklyCheckIn(c: CoachInput): CoachResult {
     confidence: 'low',
     loggedDays: food.length,
     weighIns: weighIns.length,
-    newTarget: c.dietBreakNextWeek ? roundTo(c.previousTdee, 10) : c.previousTarget,
+    newTarget: c.previousTarget,
+    weekTarget: c.dietBreakNextWeek ? roundTo(c.previousTdee, 10) : c.previousTarget,
     change: 0,
     stalled: false,
     suggestion: 'none',
@@ -127,7 +133,6 @@ export function weeklyCheckIn(c: CoachInput): CoachResult {
     reasons.push(
       `Not enough data yet to re-estimate your maintenance (${food.length} days of food and ${weighIns.length} weigh-ins in the last ${windowDays} days). Targets stay the same – keep logging and the coach will adjust next week.`,
     );
-    if (c.dietBreakNextWeek) base.change = base.newTarget - c.previousTarget;
     return base;
   }
 
@@ -158,56 +163,47 @@ export function weeklyCheckIn(c: CoachInput): CoachResult {
     )} kcal; blended with the previous estimate the coach now uses ${roundTo(tdee, 10)} kcal.`,
   );
 
-  let target: number;
-  let stalled = false;
   let suggestion: CoachSuggestion = 'none';
+  let target = tdee - desiredDeficit;
+  // After a diet-break week, intake was meant to be at maintenance – don't judge adherence or stalls on it.
+  const judge = !c.lastWeekDietBreak;
+  const adherent = Math.abs(avgIntake - c.previousTarget) <= 150;
+  const stalled = judge && c.daysIntoPhase >= 21 && adherent && observedLossKgPerWeek < plannedLossKg * 0.25;
 
-  if (c.dietBreakNextWeek) {
-    target = roundTo(tdee, 10);
-    reasons.push('Next week is a planned diet break, so the target is your estimated maintenance.');
-  } else {
-    target = tdee - desiredDeficit;
-    const adherent = Math.abs(avgIntake - c.previousTarget) <= 150;
-    stalled = c.daysIntoPhase >= 21 && adherent && observedLossKgPerWeek < plannedLossKg * 0.25;
+  if (observedLossPct > MAX_LOSS_PCT && c.daysIntoPhase >= 14) {
+    reasons.push(`You're losing faster than ${MAX_LOSS_PCT}% of body weight per week, which risks muscle loss – calories go up.`);
+  }
+  if (judge && !adherent) {
+    reasons.push(
+      `Your average intake was ${Math.round(Math.abs(avgIntake - c.previousTarget))} kcal ${avgIntake > c.previousTarget ? 'above' : 'below'} target. The estimate accounts for what you actually ate, so focus on consistency rather than cutting further.`,
+    );
+  }
 
-    if (observedLossPct > MAX_LOSS_PCT && c.daysIntoPhase >= 14) {
-      reasons.push(`You're losing faster than ${MAX_LOSS_PCT}% of body weight per week, which risks muscle loss – calories go up.`);
-    }
-    if (!adherent) {
-      reasons.push(
-        `Your average intake was ${Math.round(Math.abs(avgIntake - c.previousTarget))} kcal ${avgIntake > c.previousTarget ? 'above' : 'below'} target. The estimate accounts for what you actually ate, so focus on consistency rather than cutting further.`,
-      );
-    }
-
-    // Limit week-to-week changes.
-    let change = target - c.previousTarget;
-    change = Math.max(-MAX_WEEKLY_CHANGE, Math.min(MAX_WEEKLY_CHANGE, change));
-    if (stalled && c.stalledWeeks >= 1 && change < 0) {
-      // Repeated stall: don't keep slashing calories – suggest a break instead.
-      change = Math.max(change, -50);
-      suggestion = 'diet_break';
-      reasons.push(
-        'Weight loss has stalled for 2+ weeks despite good adherence. Rather than cutting harder, the coach suggests a 1–2 week diet break at maintenance – it often restarts progress and protects your training.',
-      );
-    }
-    target = c.previousTarget + change;
-
-    if (target < c.floorKcal) {
-      target = c.floorKcal;
-      suggestion = 'diet_break';
-      reasons.push(`The target is held at your safety minimum (${c.floorKcal} kcal). A diet break is a better next step than eating less.`);
-    }
+  // Limit week-to-week changes.
+  let change = Math.max(-MAX_WEEKLY_CHANGE, Math.min(MAX_WEEKLY_CHANGE, target - c.previousTarget));
+  if (stalled && c.stalledWeeks >= 1 && change < 0) {
+    // Repeated stall: don't keep slashing calories – suggest a break instead.
+    change = Math.max(change, -50);
+    suggestion = 'diet_break';
+    reasons.push(
+      'Weight loss has stalled for 2+ weeks despite good adherence. Rather than cutting harder, the coach suggests a 1–2 week diet break at maintenance – it often restarts progress and protects your training.',
+    );
+  }
+  target = c.previousTarget + change;
+  if (target < c.floorKcal) {
+    target = c.floorKcal;
+    suggestion = 'diet_break';
+    reasons.push(`The target is held at your safety minimum (${c.floorKcal} kcal). A diet break is a better next step than eating less.`);
   }
 
   target = roundTo(target, 10);
-  const change = target - c.previousTarget;
-  if (!c.dietBreakNextWeek) {
-    if (change === 0) reasons.push('You are on track – the target stays the same.');
-    else
-      reasons.push(
-        `Target ${change > 0 ? 'raised' : 'lowered'} by ${Math.abs(change)} kcal to aim for about ${plannedLossKg.toFixed(2)} kg/week (changes are limited to ±${MAX_WEEKLY_CHANGE} kcal per week so you can adapt).`,
-      );
-  }
+  const finalChange = target - c.previousTarget;
+  if (finalChange === 0) reasons.push('You are on track – the dieting target stays the same.');
+  else
+    reasons.push(
+      `Dieting target ${finalChange > 0 ? 'raised' : 'lowered'} by ${Math.abs(finalChange)} kcal to aim for about ${plannedLossKg.toFixed(2)} kg/week (changes are limited to ±${MAX_WEEKLY_CHANGE} kcal per week so you can adapt).`,
+    );
+  if (c.dietBreakNextWeek) reasons.push(`This week is a diet break, so eat at your estimated maintenance (${roundTo(tdee, 10)} kcal). The dieting target applies again afterwards.`);
 
   return {
     ok: true,
@@ -220,7 +216,8 @@ export function weeklyCheckIn(c: CoachInput): CoachResult {
     loggedDays: food.length,
     weighIns: weighIns.length,
     newTarget: target,
-    change,
+    weekTarget: c.dietBreakNextWeek ? roundTo(tdee, 10) : target,
+    change: finalChange,
     stalled,
     suggestion,
     reasons,

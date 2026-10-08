@@ -2,9 +2,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { startPlannedWorkout } from '../lib/lifting';
+import { checkinDue, weekRange } from '../lib/checkin';
+import { findMissed, withMove } from '../lib/reschedule';
 import { useActivePhase, useSettings } from '../hooks';
 import { addDays, DAY_NAMES, daysBetween, formatDate, mondayOf, today, weekday } from '../lib/dates';
-import { kcalFor, nextSessionDay, sessionsOn, type DaySessions } from '../lib/plan';
+import { kcalFor, nextSessionDay, sessionsOn, weekIndexFor, type DaySessions } from '../lib/plan';
 import { RunDetail, WeekTags } from '../components/PhaseDetails';
 import { FoodCard, WeighInCard } from '../components/LogCards';
 import { HealthImportButton } from '../components/HealthImport';
@@ -35,6 +37,8 @@ export default function Today() {
         </Link>
       )}
 
+      <CheckinBanner phase={phase} />
+      <MissedSessions phase={phase} />
       <PhotoReminder photoDay={settings.photoDay ?? 6} />
 
       {beforeStart && (
@@ -103,9 +107,6 @@ export default function Today() {
         </>
       )}
 
-      <p className="small muted center" style={{ marginTop: 24 }}>
-        Workout and run logging, progress photos and the weekly coach arrive in the next updates.
-      </p>
     </div>
   );
 }
@@ -188,5 +189,59 @@ function PhotoReminder({ photoDay }: { photoDay: number }) {
     <Link to="/photos" className="banner" style={{ textDecoration: 'none' }}>
       📸 {count === 0 ? "Time for this week's progress photos." : `Progress photos: ${count} of 3 done this week.`} Tap to add them.
     </Link>
+  );
+}
+
+function CheckinBanner({ phase }: { phase: Phase }) {
+  const checkins = useLiveQuery(() => db.checkins.toArray(), []);
+  if (!checkins || !checkinDue(phase, today(), checkins).due) return null;
+  return (
+    <Link to="/checkin" className="banner" style={{ textDecoration: 'none', background: 'var(--accent-soft)' }}>
+      📋 Your weekly check-in is ready – see last week's progress and this week's targets.
+    </Link>
+  );
+}
+
+/** Missed sessions this week: move to a sensible day, or skip. */
+function MissedSessions({ phase }: { phase: Phase }) {
+  const t = today();
+  const W = weekIndexFor(phase, t);
+  const range = W >= 1 && W <= phase.lengthWeeks ? weekRange(phase, W) : undefined;
+  const done = useLiveQuery(async () => {
+    if (!range) return new Set<string>();
+    const ws = await db.workouts.where('date').between(range.from, range.to, true, true).toArray();
+    const rs = await db.runs.where('date').between(range.from, range.to, true, true).toArray();
+    return new Set([...ws.filter((w) => w.finishedAt && w.sessionId).map((w) => w.sessionId!), ...rs.filter((r) => r.sessionId).map((r) => r.sessionId!)]);
+  }, [range?.from]);
+  if (!range || !done) return null;
+  const missed = findMissed(phase, t, done);
+  if (!missed.length) return null;
+
+  const move = (sessionId: string, to: string) => db.phases.put(withMove(phase, W, sessionId, to));
+  return (
+    <div className="card" style={{ marginBottom: 12 }}>
+      <h3>Missed this week</h3>
+      {missed.map((m) => (
+        <div key={m.session.id} style={{ padding: '8px 0', borderTop: '1px solid var(--border)' }}>
+          <div className="spread">
+            <span>
+              <span className={`badge ${m.session.type === 'run' ? 'run' : 'lift'}`}>{m.session.label}</span>{' '}
+              <span className="small muted">{DAY_NAMES[weekday(m.due)]}</span>
+            </span>
+          </div>
+          <p className="small muted" style={{ margin: '6px 0' }}>{m.advice}</p>
+          <div className="row">
+            {m.suggestion && (
+              <button className="btn primary small" onClick={() => move(m.session.id, m.suggestion!)}>
+                Move to {m.suggestion === t ? 'today' : DAY_NAMES[weekday(m.suggestion)]}
+              </button>
+            )}
+            <button className="btn small" onClick={() => move(m.session.id, 'skip')}>
+              Skip
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

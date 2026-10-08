@@ -12,6 +12,7 @@ import RunsScreen from './screens/RunsScreen';
 import RunForm from './screens/RunForm';
 import MoreScreen from './screens/MoreScreen';
 import PhotosScreen from './screens/PhotosScreen';
+import CheckinScreen from './screens/CheckinScreen';
 import PlanScreen from './screens/PlanScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import HealthSetup from './screens/HealthSetup';
@@ -126,6 +127,7 @@ export default function App() {
         <Route path="/import" element={<ImportLinkScreen />} />
         <Route path="/lifts/workout/:id" element={<WorkoutScreen />} />
         <Route path="/photos" element={<PhotosScreen />} />
+        <Route path="/checkin" element={<CheckinScreen />} />
         <Route path="/runs/log" element={<RunForm />} />
         <Route path="/runs/edit/:id" element={<RunForm />} />
         <Route path="/lifts/exercise/:exerciseId" element={<ExerciseScreen />} />

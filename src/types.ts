@@ -176,6 +176,28 @@ export interface Phase {
   weeks: PhaseWeek[];
   rationale: Rationale[];
   warnings: string[];
+  /** Rescheduled sessions: key `${weekIndex}:${sessionId}` → new date, or 'skip'. */
+  moves?: Record<string, string>;
+}
+
+export interface CheckIn {
+  /** Monday of the week the check-in was done (it reviews the previous week). */
+  week: string;
+  phaseId: number;
+  createdAt: string;
+  /** Maintenance estimate before this check-in. */
+  previousTdee: number;
+  tdee: number;
+  previousTarget: number;
+  newTarget: number;
+  stalled: boolean;
+  confidence: 'low' | 'medium' | 'high';
+  ok: boolean;
+  avgIntake?: number;
+  trendKg?: number;
+  observedLossKgPerWeek?: number;
+  reasons: string[];
+  actions: Array<'diet_break' | 'deload'>;
 }
 
 export interface Settings {

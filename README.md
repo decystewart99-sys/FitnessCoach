@@ -24,8 +24,8 @@ Everything is stored locally on the device. Use **Settings → Save a backup** r
 - [x] Lifting: programme builder, workout logger, rest timer, progression, lift analytics
 - [x] Running log + analytics (time trials update training paces)
 - [x] Weekly progress photos (compare weeks, optional in backups)
-- [ ] (c) Weekly coach adjustments, rescheduling
-- [ ] (d) Analytics and weekly check-in
+- [x] (c) Weekly coach adjustments, deload/diet-break suggestions, missed-session rescheduling
+- [x] (d) Weekly check-in, calories vs target, maintenance estimate over time
 - [ ] (e) Garmin CSV / Garmin data-export import, calendar export
 - [ ] (f) Android app with Health Connect (when switching phones)
 
