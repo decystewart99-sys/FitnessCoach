@@ -19,8 +19,12 @@ Everything is stored locally on the device. Use **Settings → Save a backup** r
 ## Build stages
 
 - [x] (a) Onboarding, phase generation, calorie engine, backups
-- [ ] (b) Workout builder, strength & run logging, rest timer
-- [ ] (c) Weight tracker, food logging, weekly coach adjustments, rescheduling
+- [x] Weight tab: daily weigh-ins, food log, trend chart, progress stats
+- [x] Import food totals + weight from Apple Health (iPhone Shortcut)
+- [x] Lifting: programme builder, workout logger, rest timer, progression, lift analytics
+- [ ] Running log + analytics
+- [ ] Weekly progress photos
+- [ ] (c) Weekly coach adjustments, rescheduling
 - [ ] (d) Analytics and weekly check-in
 - [ ] (e) Garmin CSV / Garmin data-export import, calendar export
 - [ ] (f) Android app with Health Connect (when switching phones)

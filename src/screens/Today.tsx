@@ -1,4 +1,7 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
+import { startPlannedWorkout } from '../lib/lifting';
 import { useActivePhase, useSettings } from '../hooks';
 import { addDays, DAY_NAMES, daysBetween, formatDate, today, weekday } from '../lib/dates';
 import { kcalFor, nextSessionDay, sessionsOn, type DaySessions } from '../lib/plan';
@@ -122,6 +125,7 @@ function SessionList({ day, phase, settings }: { day: DaySessions; phase: Phase;
                   <div style={{ fontWeight: 600 }}>{session.label}</div>
                   <div className="small muted">{info?.focus}</div>
                   {week?.tags.includes('deload') && <p className="small">Deload week: do about half your usual sets, same weights, stop well short of failure.</p>}
+                  {day.date === today() && <StartWorkoutButton phase={phase} sessionId={session.id} settings={settings} />}
                 </>
               )}
             </div>
@@ -129,5 +133,26 @@ function SessionList({ day, phase, settings }: { day: DaySessions; phase: Phase;
         );
       })}
     </div>
+  );
+}
+
+function StartWorkoutButton({ phase, sessionId, settings }: { phase: Phase; sessionId: string; settings: Settings }) {
+  const navigate = useNavigate();
+  const existing = useLiveQuery(async () => (await db.workouts.where('date').equals(today()).toArray()).find((w) => w.sessionId === sessionId), [sessionId]);
+  if (existing?.finishedAt) {
+    return (
+      <Link className="btn small" style={{ marginTop: 8 }} to={`/lifts/workout/${existing.id}`}>
+        ✓ Done – view workout
+      </Link>
+    );
+  }
+  return (
+    <button
+      className="btn primary small"
+      style={{ marginTop: 8 }}
+      onClick={async () => navigate(`/lifts/workout/${await startPlannedWorkout(phase, sessionId, settings)}`)}
+    >
+      {existing ? 'Resume workout' : 'Start workout'}
+    </button>
   );
 }

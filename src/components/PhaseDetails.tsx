@@ -229,7 +229,7 @@ export default function PhaseDetails({ phase, settings, edit }: Props) {
         <p className="small muted" style={{ marginTop: 12 }}>
           {phase.strength.repGuide} {phase.strength.rirGuide}
         </p>
-        <p className="small muted">Exercises and set-by-set targets arrive in the next update (Stage b).</p>
+        <p className="small muted">Exercises, set-by-set targets and swaps are in the Lifts tab.</p>
       </div>
 
       <h3 className="section-title">Running progression</h3>

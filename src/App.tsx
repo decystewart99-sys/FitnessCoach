@@ -5,6 +5,9 @@ import Onboarding from './screens/Onboarding';
 import Review from './screens/Review';
 import Today from './screens/Today';
 import WeightScreen from './screens/WeightScreen';
+import LiftsScreen from './screens/LiftsScreen';
+import WorkoutScreen from './screens/WorkoutScreen';
+import ExerciseScreen from './screens/ExerciseScreen';
 import PlanScreen from './screens/PlanScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import HealthSetup from './screens/HealthSetup';
@@ -20,6 +23,11 @@ const icons = {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <rect x="3" y="3" width="18" height="18" rx="4" />
       <path d="M8 9a6 6 0 0 1 8 0l-2.5 3" />
+    </svg>
+  ),
+  lifts: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 7v10M3 9v6M18 7v10M21 9v6M6 12h12" />
     </svg>
   ),
   plan: (
@@ -53,6 +61,10 @@ function MainLayout() {
         <NavLink to="/weight">
           {icons.weight}
           Weight
+        </NavLink>
+        <NavLink to="/lifts">
+          {icons.lifts}
+          Lifts
         </NavLink>
         <NavLink to="/plan">
           {icons.plan}
@@ -95,10 +107,13 @@ export default function App() {
         <Route path="/setup" element={<Onboarding />} />
         <Route path="/setup/review" element={<Review />} />
         <Route path="/import" element={<ImportLinkScreen />} />
+        <Route path="/lifts/workout/:id" element={<WorkoutScreen />} />
+        <Route path="/lifts/exercise/:exerciseId" element={<ExerciseScreen />} />
         <Route path="/settings/health" element={<HealthSetup />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<Today />} />
           <Route path="/weight" element={<WeightScreen />} />
+          <Route path="/lifts" element={<LiftsScreen />} />
           <Route path="/plan" element={<PlanScreen />} />
           <Route path="/settings" element={<SettingsScreen />} />
         </Route>

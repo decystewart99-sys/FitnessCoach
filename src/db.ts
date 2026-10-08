@@ -3,12 +3,21 @@
 
 import Dexie, { type EntityTable } from 'dexie';
 import type { NutritionEntry, Phase, Settings, WeightEntry } from './types';
+import type { WorkoutLog } from './engine/program';
+
+export interface SwapEntry {
+  /** `${phaseId}:${slot}` */
+  key: string;
+  exerciseId: string;
+}
 
 export class CoachDB extends Dexie {
   settings!: EntityTable<Settings, 'id'>;
   phases!: EntityTable<Phase, 'id'>;
   weights!: EntityTable<WeightEntry, 'date'>;
   nutrition!: EntityTable<NutritionEntry, 'date'>;
+  workouts!: EntityTable<WorkoutLog, 'id'>;
+  swaps!: EntityTable<SwapEntry, 'key'>;
 
   constructor() {
     super('fitness-coach');
@@ -17,6 +26,10 @@ export class CoachDB extends Dexie {
       phases: '++id, status, startDate',
       weights: 'date',
       nutrition: 'date',
+    });
+    this.version(2).stores({
+      workouts: '++id, date, sessionId, finishedAt',
+      swaps: 'key',
     });
   }
 }
