@@ -193,13 +193,27 @@ export function repRange(e: Exercise): [number, number] {
   return e.kind === 'compound' ? [6, 10] : e.kind === 'secondary' ? [8, 12] : [10, 15];
 }
 
+/**
+ * Rest between sets. Research finds clearly worse growth with ~1 min rests on big lifts but little
+ * extra benefit beyond ~2–3 min, so compounds get 2½ min, other lifts 2, isolation 75 s.
+ */
 export function restSeconds(e: Exercise): number {
-  return e.kind === 'compound' ? 180 : e.kind === 'secondary' ? 120 : 75;
+  return e.kind === 'compound' ? 150 : e.kind === 'secondary' ? 120 : 75;
 }
 
-/** Target reps in reserve: compounds stay further from failure; isolation can go closer. */
+/** Stable = the load can't fall on you and form can't really break down (machines, cables, isolation). */
+export function isStable(e: Exercise): boolean {
+  return e.kind === 'isolation' || e.equipment.every((combo) => combo.includes('machine') || combo.includes('cable'));
+}
+
+/**
+ * Target reps in reserve. Sets ending closer to failure give more growth per set (so fewer sets
+ * are needed); heavy free-weight lifts stay at 2 because grinding them costs a lot of fatigue for
+ * little extra – which matters while dieting and running. Strength gains barely depend on it.
+ */
 export function targetRir(e: Exercise): number {
-  return e.kind === 'compound' ? 2 : e.kind === 'secondary' ? 2 : 1;
+  // Isolation: 1 RIR, with the final set taken to failure (set in the workout log).
+  return isStable(e) || e.kind !== 'compound' ? 1 : 2;
 }
 
 /** Smallest sensible jump in load, in kg (per dumbbell for dumbbell work). */

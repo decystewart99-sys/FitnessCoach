@@ -165,7 +165,10 @@ export default function LiftsScreen() {
           </div>
           {s.exercises.map((e) => (
             <div className="spread small" key={e.slot} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-              <Link to={`/lifts/exercise/${e.exerciseId}`}>{EXERCISE_BY_ID[e.exerciseId].name}</Link>
+              <span>
+                <Link to={`/lifts/exercise/${e.exerciseId}`}>{EXERCISE_BY_ID[e.exerciseId].name}</Link>
+                {e.superset && <span className="muted"> ⇄ superset</span>}
+              </span>
               <span className="muted">
                 {e.sets} × {e.repMin}–{e.repMax}
               </span>

@@ -90,6 +90,18 @@ export async function activatePhase(phase: Phase, replaceId?: number): Promise<n
   });
 }
 
+/**
+ * When the app's training logic improves, bring the active phase's lifting targets and
+ * explanations up to date. Calories, schedule, dates and logged data are left untouched.
+ */
+export async function refreshStrengthPlan(phase: Phase): Promise<void> {
+  if (phase.id === undefined) return;
+  const { generatePhase } = await import('./engine/phase');
+  const fresh = generatePhase(phase.profile, phase.options);
+  const changed = JSON.stringify(fresh.strength) !== JSON.stringify(phase.strength) || JSON.stringify(fresh.rationale) !== JSON.stringify(phase.rationale);
+  if (changed) await db.phases.update(phase.id, { strength: fresh.strength, rationale: fresh.rationale });
+}
+
 /** Ask the browser not to evict our data under storage pressure. */
 export async function requestPersistence(): Promise<boolean> {
   try {

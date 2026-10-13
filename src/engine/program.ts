@@ -28,6 +28,8 @@ export interface ProgramExercise {
   alternatives: string[];
   /** Loads an area the user flagged, because nothing safer fits their equipment. */
   risky: boolean;
+  /** Slot of the exercise this one is supersetted with (alternate sets, short rests). */
+  superset?: string;
 }
 
 export interface ProgramSession {
@@ -53,6 +55,8 @@ export interface ExerciseLog {
   rir: number;
   restSec: number;
   note?: string;
+  /** Exercise id of the superset partner, if any. */
+  supersetWith?: string;
 }
 
 export interface WorkoutLog {
@@ -151,28 +155,83 @@ export function buildProgram(phase: Phase, swaps: Swaps = {}): ProgramSession[] 
     return { sessionId: s.id, label: s.label, kind, exercises };
   });
 
-  // 2. Spread each muscle's weekly set target across the slots that train it directly.
-  const targets = phase.strength.weeklySets;
-  const slotsPerMuscle: Partial<Record<Muscle, number>> = {};
-  for (const ses of sessions) for (const ex of ses.exercises) {
-    const m = primaryMuscle(EXERCISE_BY_ID[ex.exerciseId]);
-    slotsPerMuscle[m] = (slotsPerMuscle[m] ?? 0) + 1;
-  }
-  for (const ses of sessions) for (const ex of ses.exercises) {
-    const m = primaryMuscle(EXERCISE_BY_ID[ex.exerciseId]);
-    ex.sets = clamp(Math.round(targets[m] / (slotsPerMuscle[m] ?? 1)), 2, 4);
-  }
+  // 2. Give each muscle its weekly target, counting indirect work as half a set.
+  allocateSets(sessions, phase.strength.weeklySets);
 
-  // 3. Fit each session into the time available.
+  // 3. Pair opposing isolation exercises into supersets – same results, less time.
+  for (const ses of sessions) pairSupersets(ses);
+
+  // 4. Fit each session into the time available.
   for (const ses of sessions) fitToTime(ses, p.sessionMinutes);
   return sessions;
 }
 
-function primaryMuscle(e: Exercise): Muscle {
-  return (Object.entries(e.muscles).find(([, v]) => v === 1)?.[0] ?? 'abs') as Muscle;
+const MIN_SETS = 2;
+const MAX_SETS = 4;
+
+/**
+ * Every exercise starts at 2 sets (strength gains largely plateau around there), then sets are
+ * added one at a time wherever a muscle is furthest below its target – counting a compound's
+ * indirect work as half a set. Isolation exercises whose muscle is already covered by compounds
+ * are dropped: extra sets past that point add time and fatigue for little extra growth.
+ */
+function allocateSets(sessions: ProgramSession[], targets: Record<Muscle, number>) {
+  const all = sessions.flatMap((s) => s.exercises);
+  for (const ex of all) ex.sets = MIN_SETS;
+  for (let guard = 0; guard < 300; guard++) {
+    const planned = plannedWeeklySets(sessions);
+    let best: { ex: ProgramExercise; gap: number } | undefined;
+    for (const ex of all) {
+      if (ex.sets >= MAX_SETS) continue;
+      const m = primaryMuscle(EXERCISE_BY_ID[ex.exerciseId]);
+      const gap = (targets[m] - planned[m]) / targets[m];
+      if (gap <= 0.001) continue;
+      if (!best || gap > best.gap + 1e-9 || (Math.abs(gap - best.gap) < 1e-9 && ex.sets < best.ex.sets)) best = { ex, gap };
+    }
+    if (!best) break;
+    best.ex.sets++;
+  }
+  for (const ses of sessions) {
+    for (let i = ses.exercises.length - 1; i >= 0 && ses.exercises.length > 3; i--) {
+      const ex = ses.exercises[i];
+      const e = EXERCISE_BY_ID[ex.exerciseId];
+      if (e.kind !== 'isolation') continue;
+      const m = primaryMuscle(e);
+      if (plannedWeeklySets(sessions)[m] - ex.sets * (e.muscles[m] ?? 0) >= targets[m]) ses.exercises.splice(i, 1);
+    }
+  }
 }
 
-const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+/** Opposing / non-competing isolation pairs that work well as supersets. */
+const SUPERSET_PAIRS: Array<[Pattern, Pattern]> = [
+  ['biceps', 'triceps'],
+  ['chest_iso', 'rear_delt'],
+  ['side_delt', 'abs'],
+  ['side_delt', 'calf'],
+  ['knee_ext', 'knee_flex'],
+];
+const SUPERSET_REST = 45;
+
+function pairSupersets(ses: ProgramSession) {
+  const pat = (ex: ProgramExercise) => EXERCISE_BY_ID[ex.exerciseId].pattern;
+  for (const [a, b] of SUPERSET_PAIRS) {
+    const first = ses.exercises.find((ex) => pat(ex) === a && !ex.superset);
+    const second = ses.exercises.find((ex) => pat(ex) === b && !ex.superset);
+    if (!first || !second) continue;
+    first.superset = second.slot;
+    second.superset = first.slot;
+    // Alternate sets: each muscle still gets ~2 min between its own sets.
+    first.restSec = second.restSec = SUPERSET_REST;
+    second.sets = first.sets = Math.max(first.sets, second.sets);
+    // Put the pair next to each other.
+    ses.exercises.splice(ses.exercises.indexOf(second), 1);
+    ses.exercises.splice(ses.exercises.indexOf(first) + 1, 0, second);
+  }
+}
+
+export function primaryMuscle(e: Exercise): Muscle {
+  return (Object.entries(e.muscles).find(([, v]) => v === 1)?.[0] ?? 'abs') as Muscle;
+}
 
 /** Minutes a session takes: each set ≈ 45 s of work + its rest, plus ~8 min warm-up. */
 export function sessionMinutes(ses: ProgramSession): number {
@@ -186,7 +245,7 @@ function fitToTime(ses: ProgramSession, minutes: number) {
   while (sessionMinutes(ses) > minutes) {
     let pick: ProgramExercise | undefined;
     ses.exercises.forEach((ex) => {
-      if (ex.sets <= 2) return;
+      if (ex.sets <= MIN_SETS || ex.superset) return;
       if (!pick || ex.sets > pick.sets || (ex.sets === pick.sets && kindRank[kindOf(ex)] <= kindRank[kindOf(pick)])) pick = ex;
     });
     if (!pick) break;
@@ -196,7 +255,12 @@ function fitToTime(ses: ProgramSession, minutes: number) {
   while (sessionMinutes(ses) > minutes && ses.exercises.length > 3) {
     const idx = [...ses.exercises].reverse().findIndex((ex) => kindOf(ex) === 'isolation');
     if (idx < 0) break;
-    ses.exercises.splice(ses.exercises.length - 1 - idx, 1);
+    const [removed] = ses.exercises.splice(ses.exercises.length - 1 - idx, 1);
+    const partner = ses.exercises.find((ex) => ex.slot === removed.superset);
+    if (partner) {
+      partner.superset = undefined;
+      partner.restSec = restSeconds(EXERCISE_BY_ID[partner.exerciseId]);
+    }
   }
 }
 

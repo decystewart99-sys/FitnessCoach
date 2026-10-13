@@ -195,7 +195,8 @@ function ExerciseCard({
   const e = EXERCISE_BY_ID[ex.exerciseId];
   const [showCues, setShowCues] = useState(false);
   const allDone = ex.sets.length > 0 && ex.sets.every((s) => s.done);
-  const restLabel = ex.restSec >= 150 ? '2–3+ min' : ex.restSec >= 100 ? '~2 min' : '60–90 s';
+  const restLabel = ex.supersetWith ? '45 s, then the other exercise' : ex.restSec >= 150 ? '2–3 min' : ex.restSec >= 100 ? '~2 min' : '60–90 s';
+  const partner = ex.supersetWith ? EXERCISE_BY_ID[ex.supersetWith] : undefined;
   if (!e) return null;
 
   const setSet = (i: number, patch: Partial<ExerciseLog['sets'][number]>) =>
@@ -233,6 +234,12 @@ function ExerciseCard({
           </button>
         </div>
       </div>
+      {partner && (
+        <p className="small" style={{ margin: '8px 0 0' }}>
+          <span className="badge accent">Superset</span> Alternate sets with <b>{partner.name}</b> – same results as straight sets in less time.
+        </p>
+      )}
+      {e.kind === 'isolation' && !ex.sets.every((s) => s.done) && <p className="small muted" style={{ margin: '6px 0 0' }}>Take the last set to failure (0 RIR).</p>}
       {ex.note && <p className="small" style={{ margin: '8px 0 0' }}>{ex.note}</p>}
       {showCues && (
         <ul className="small muted" style={{ margin: '8px 0 0', paddingLeft: 18 }}>

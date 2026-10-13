@@ -1,6 +1,8 @@
 import { HashRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { useEffect } from 'react';
 import { useActivePhase } from './hooks';
+import { refreshStrengthPlan } from './db';
 import Onboarding from './screens/Onboarding';
 import Review from './screens/Review';
 import Today from './screens/Today';
@@ -69,6 +71,12 @@ const icons = {
 function MainLayout() {
   const phase = useActivePhase();
   const location = useLocation();
+  const phaseId = phase?.id;
+  useEffect(() => {
+    if (phase) refreshStrengthPlan(phase).catch(() => undefined);
+    // Once per phase per app start is enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phaseId]);
   if (phase === undefined) return null; // loading
   if (phase === null && location.pathname !== '/settings') return <Navigate to="/setup" replace />;
   return (

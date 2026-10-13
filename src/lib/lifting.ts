@@ -77,7 +77,13 @@ export function makeExerciseLog(
     rir: deload ? 3 : plan.rir,
     restSec: plan.restSec,
     note,
-    sets: Array.from({ length: sets }, (_, i) => ({ weightKg: t.weightKg, reps: t.reps[i] ?? t.reps[0], rir: deload ? 3 : plan.rir, done: false })),
+    // Isolation: take only the last set to failure – most of the benefit, little extra fatigue.
+    sets: Array.from({ length: sets }, (_, i) => ({
+      weightKg: t.weightKg,
+      reps: t.reps[i] ?? t.reps[0],
+      rir: deload ? 3 : e.kind === 'isolation' && i === sets - 1 ? 0 : plan.rir,
+      done: false,
+    })),
   };
 }
 
@@ -106,7 +112,10 @@ export async function startPlannedWorkout(phase: Phase, sessionId: string, setti
     label: session.label,
     deload,
     startedAt: new Date().toISOString(),
-    exercises: session.exercises.map((pe) => makeExerciseLog(EXERCISE_BY_ID[pe.exerciseId], pe, history, unit, deload)),
+    exercises: session.exercises.map((pe) => ({
+      ...makeExerciseLog(EXERCISE_BY_ID[pe.exerciseId], pe, history, unit, deload),
+      supersetWith: session.exercises.find((x) => x.slot === pe.superset)?.exerciseId,
+    })),
   };
   return (await db.workouts.add(log)) as number;
 }

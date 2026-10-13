@@ -188,8 +188,19 @@ function buildRationale(p: Profile, c: RationaleCtx): Rationale[] {
     }`,
   });
   r.push({
-    title: 'Volume and effort',
-    body: (p.goalRanking[2] === 'muscle' ? 'Muscle is your lowest priority, so volume sits around maintenance level – enough to keep what you have while fat loss and running take priority. ' : '') + 'Weekly hard sets start near the low end of the 10–20 range because a calorie deficit and running both reduce how much you can recover from. Sets are taken to 1–3 reps in reserve: close enough to failure to drive growth, far enough to keep fatigue manageable alongside running. Progression uses double progression – add reps within the range, then add weight.',
+    title: 'Volume: the efficient zone, not the maximum',
+    body:
+      'Recent meta-analyses (Pelland et al. 2025, 67 studies) show muscle growth keeps rising with weekly sets but with clearly diminishing returns, and strength flattens out sooner still. So each muscle gets roughly 8–12 hard sets a week – where most of the benefit has already been captured – instead of the 15–20+ needed to squeeze out the last few percent. Sets are counted the way that best predicted results in that research: a set that trains a muscle indirectly (triceps in a bench press, biceps in a row) counts as half. That means less direct arm and shoulder work is needed, and sessions are shorter.',
+  });
+  r.push({
+    title: 'Effort: close to failure, so fewer sets do the job',
+    body:
+      'Sets that end closer to failure produce more growth per set (Robinson et al. 2024), which is what makes a lower set count work. Machines, cables and isolation exercises are taken to about 1 rep in reserve, with the last isolation set to failure; heavy free-weight lifts stop at about 2 in reserve, because grinding them out costs a lot of fatigue – which you cannot afford alongside running and a deficit – for little extra gain (Refalo et al. 2024 found similar growth at 1–2 reps in reserve as at failure). Progression is double progression: add reps within the range, then add weight.',
+  });
+  r.push({
+    title: 'Time savers',
+    body:
+      'Opposing isolation exercises (e.g. biceps and triceps) are done as supersets – alternating sets with short rests. A 2025 meta-analysis (Zhang, Weakley et al.) found supersets cut session time without reducing strength or muscle gains. Big lifts keep around 2–3 minutes of rest, since much shorter rests on heavy compounds do reduce gains. Exercises that load the muscle at long lengths (deep stretch) are preferred – e.g. seated leg curls, overhead triceps extensions, incline curls – as they appear to give more growth per set.',
   });
   r.push({
     title: `Deloads every ${c.deloadEvery} weeks`,
