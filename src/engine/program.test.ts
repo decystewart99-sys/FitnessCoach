@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Profile } from '../types';
 import { generatePhase } from './phase';
 import { buildProgram, exerciseHistory, isStalled, nextTarget, plannedWeeklySets, sessionMinutes, type WorkoutLog } from './program';
-import { EXERCISE_BY_ID } from './exercises';
+import { EXERCISE_BY_ID, availableEquipment, station } from './exercises';
 
 const base: Profile = {
   age: 35, sex: 'male', heightCm: 180, weightKg: 90, jobActivity: 'sedentary',
@@ -51,6 +51,34 @@ describe('program builder', () => {
       expect(s.exercises.length).toBeGreaterThanOrEqual(3);
       for (const ex of s.exercises) expect(EXERCISE_BY_ID[ex.exerciseId].equipment.some((c) => c.includes('none'))).toBe(true);
     }
+  });
+
+  it('only supersets exercises at the same station', () => {
+    for (const prof of [base, { ...base, goalRanking: ['muscle', 'fat', 'run'] as Profile['goalRanking'] }, { ...base, equipment: 'home' as const, homeEquipment: ['dumbbells', 'adjustable_bench', 'bands'] as Profile['homeEquipment'] }]) {
+      const phase = generatePhase(prof, { startDate: START });
+      const equip = availableEquipment(prof.equipment, prof.homeEquipment);
+      for (const s of buildProgram(phase)) for (const ex of s.exercises) {
+        if (!ex.superset) continue;
+        const partner = s.exercises.find((x) => x.slot === ex.superset)!;
+        expect(station(EXERCISE_BY_ID[ex.exerciseId], equip)).toBe(station(EXERCISE_BY_ID[partner.exerciseId], equip));
+      }
+    }
+  });
+
+  it('gives full-body days direct biceps and triceps work', () => {
+    const phase = generatePhase({ ...base, liftExperience: 'beginner', trainingDays: [0, 2, 4], allowDoubles: true }, { startDate: START });
+    const fulls = buildProgram(phase).filter((s) => s.kind === 'full');
+    expect(fulls.length).toBeGreaterThan(0);
+    const withBiceps = fulls.filter((s) => s.exercises.some((e) => EXERCISE_BY_ID[e.exerciseId].pattern === 'biceps'));
+    expect(withBiceps.length).toBeGreaterThanOrEqual(Math.min(2, fulls.length));
+  });
+
+  it('does not change an exercise the user swapped in, even for a superset', () => {
+    const phase = generatePhase({ ...base, goalRanking: ['muscle', 'fat', 'run'] }, { startDate: START });
+    const upper = buildProgram(phase).find((s) => s.kind === 'upper')!;
+    const curl = upper.exercises.find((e) => EXERCISE_BY_ID[e.exerciseId].pattern === 'biceps')!;
+    const swapped = buildProgram(phase, { [curl.slot]: 'incline_curl' }).find((s) => s.kind === 'upper')!;
+    expect(swapped.exercises.find((e) => e.slot === curl.slot)!.exerciseId).toBe('incline_curl');
   });
 
   it('respects a swap', () => {

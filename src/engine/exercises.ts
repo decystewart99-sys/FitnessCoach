@@ -131,8 +131,9 @@ export const EXERCISES: Exercise[] = [
   E({ id: 'db_fly', name: 'Dumbbell fly', pattern: 'chest_iso', kind: 'isolation', perHand: true, muscles: { chest: 1 }, equipment: [['dumbbells', 'bench']], stress: ['shoulder'], reps: [10, 15], cues: ['Slight bend in the elbows', 'Lower until a good stretch – not further'] }),
 
   // ---------- Biceps ----------
-  E({ id: 'incline_curl', name: 'Incline dumbbell curl', pattern: 'biceps', kind: 'isolation', perHand: true, muscles: { biceps: 1 }, equipment: [['dumbbells', 'bench']], stress: ['elbow'], reps: [8, 15], cues: ['Bench at ~45°, arms hang behind you (big stretch)', 'Elbows stay back', 'Slow lowering'] }),
+  E({ id: 'bayesian_curl', name: 'Bayesian cable curl', pattern: 'biceps', kind: 'isolation', muscles: { biceps: 1 }, equipment: [['cable']], stress: [], reps: [10, 15], cues: ['Face away from a low cable and step forward so your arm is pulled behind you – a deep biceps stretch', 'Keep the elbow slightly behind your body as you curl', 'One arm at a time; same reps on each side (log the weight per arm)'] }),
   E({ id: 'cable_curl', name: 'Cable curl', pattern: 'biceps', kind: 'isolation', muscles: { biceps: 1 }, equipment: [['cable']], stress: [], reps: [10, 15], cues: ['Step back so the cable pulls your arms slightly behind you', 'Elbows pinned'] }),
+  E({ id: 'incline_curl', name: 'Incline dumbbell curl', pattern: 'biceps', kind: 'isolation', perHand: true, muscles: { biceps: 1 }, equipment: [['dumbbells', 'bench']], stress: ['elbow'], reps: [8, 15], cues: ['Bench at ~45°, arms hang behind you (big stretch)', 'Elbows stay back', 'Slow lowering'] }),
   E({ id: 'db_curl', name: 'Dumbbell curl', pattern: 'biceps', kind: 'isolation', perHand: true, muscles: { biceps: 1 }, equipment: [['dumbbells']], stress: [], reps: [8, 15], cues: ['No swinging', 'Full lockout at the bottom'] }),
   E({ id: 'ez_curl', name: 'EZ-bar curl', pattern: 'biceps', kind: 'isolation', muscles: { biceps: 1 }, equipment: [['barbell']], stress: ['wrist', 'elbow'], reps: [8, 12], cues: ['Elbows by your sides', 'Control down'] }),
   E({ id: 'band_bicep', name: 'Banded curl', pattern: 'biceps', kind: 'isolation', muscles: { biceps: 1 }, equipment: [['bands']], stress: [], reps: [12, 25], cues: ['Stand on the band', 'Squeeze at the top'] }),
@@ -182,6 +183,18 @@ export function candidatesFor(pattern: Pattern, equip: Set<Equip>, injuries: Inj
   const safe = all.filter((e) => !e.stress.some((s) => injuries.includes(s)));
   const risky = all.filter((e) => e.stress.some((s) => injuries.includes(s)));
   return [...safe, ...risky];
+}
+
+/** Which station an exercise is done at, given the equipment available. Machines are each their own station. */
+export function station(e: Exercise, equip: Set<Equip>): string {
+  const combo = e.equipment.find((c) => c.every((q) => equip.has(q))) ?? e.equipment[0];
+  if (combo.includes('machine') || combo.includes('leg_machine')) return `machine:${e.id}`;
+  if (combo.includes('cable')) return 'cable';
+  if (combo.includes('barbell')) return 'barbell';
+  if (combo.includes('dumbbells')) return 'dumbbells';
+  if (combo.includes('kettlebell')) return 'kettlebell';
+  if (combo.includes('bands')) return 'bands';
+  return 'bodyweight';
 }
 
 export function isRiskyFor(e: Exercise, injuries: InjuryArea[]): boolean {

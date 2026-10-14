@@ -1,7 +1,7 @@
 // Builds concrete workouts from the phase's split + weekly set targets, and works out
 // set-by-set targets from training history (double progression).
 
-import type { Muscle, Phase, StrengthDayKind } from '../types';
+import type { InjuryArea, Muscle, Phase, StrengthDayKind } from '../types';
 import {
   availableEquipment,
   candidatesFor,
@@ -11,6 +11,8 @@ import {
   restSeconds,
   targetRir,
   type Exercise,
+  station,
+  type Equip,
   type Pattern,
 } from './exercises';
 import { MUSCLES } from './strength';
@@ -78,8 +80,8 @@ export type Swaps = Record<string, string>;
 /** Movement slots per session type. Repeated session types (Upper A/B) use the next variant. */
 const TEMPLATES: Record<StrengthDayKind, Pattern[][]> = {
   full: [
-    ['squat', 'h_push', 'v_pull', 'hinge', 'side_delt', 'triceps'],
-    ['hinge', 'lunge', 'h_pull', 'h_push', 'side_delt', 'biceps'],
+    ['squat', 'h_push', 'v_pull', 'hinge', 'side_delt', 'biceps', 'triceps'],
+    ['hinge', 'lunge', 'h_pull', 'h_push', 'side_delt', 'biceps', 'triceps'],
     ['squat', 'h_push', 'h_pull', 'knee_flex', 'calf', 'abs'],
   ],
   upper: [
@@ -159,7 +161,7 @@ export function buildProgram(phase: Phase, swaps: Swaps = {}): ProgramSession[] 
   allocateSets(sessions, phase.strength.weeklySets);
 
   // 3. Pair opposing isolation exercises into supersets – same results, less time.
-  for (const ses of sessions) pairSupersets(ses);
+  for (const ses of sessions) pairSupersets(ses, equip, swaps, p.injuries);
 
   // 4. Fit each session into the time available.
   for (const ses of sessions) fitToTime(ses, p.sessionMinutes);
@@ -195,7 +197,9 @@ function allocateSets(sessions: ProgramSession[], targets: Record<Muscle, number
     for (let i = ses.exercises.length - 1; i >= 0 && ses.exercises.length > 3; i--) {
       const ex = ses.exercises[i];
       const e = EXERCISE_BY_ID[ex.exerciseId];
-      if (e.kind !== 'isolation') continue;
+      // Direct arm work stays even when rows/presses cover the target: training arms twice a week
+      // is cheap as a superset and better than relying on indirect work alone.
+      if (e.kind !== 'isolation' || e.pattern === 'biceps' || e.pattern === 'triceps') continue;
       const m = primaryMuscle(e);
       if (plannedWeeklySets(sessions)[m] - ex.sets * (e.muscles[m] ?? 0) >= targets[m]) ses.exercises.splice(i, 1);
     }
@@ -212,12 +216,19 @@ const SUPERSET_PAIRS: Array<[Pattern, Pattern]> = [
 ];
 const SUPERSET_REST = 45;
 
-function pairSupersets(ses: ProgramSession) {
+function pairSupersets(ses: ProgramSession, equip: Set<Equip>, swaps: Swaps, injuries: InjuryArea[]) {
   const pat = (ex: ProgramExercise) => EXERCISE_BY_ID[ex.exerciseId].pattern;
+  const at = (ex: ProgramExercise) => station(EXERCISE_BY_ID[ex.exerciseId], equip);
   for (const [a, b] of SUPERSET_PAIRS) {
     const first = ses.exercises.find((ex) => pat(ex) === a && !ex.superset);
     const second = ses.exercises.find((ex) => pat(ex) === b && !ex.superset);
     if (!first || !second) continue;
+    // A superset only saves time if both exercises are at the same station. Switch one of them to
+    // its best same-station alternative – unless the user picked that exercise themselves.
+    if (at(first) !== at(second)) {
+      const matched = matchStation(second, at(first), swaps, equip, injuries) || matchStation(first, at(second), swaps, equip, injuries);
+      if (!matched) continue; // no same-station option: keep them as normal straight sets
+    }
     first.superset = second.slot;
     second.superset = first.slot;
     // Alternate sets: each muscle still gets ~2 min between its own sets.
@@ -227,6 +238,26 @@ function pairSupersets(ses: ProgramSession) {
     ses.exercises.splice(ses.exercises.indexOf(second), 1);
     ses.exercises.splice(ses.exercises.indexOf(first) + 1, 0, second);
   }
+}
+
+/** Replaces ex with its best alternative at the given station. Returns false if not possible. */
+function matchStation(ex: ProgramExercise, target: string, swaps: Swaps, equip: Set<Equip>, injuries: InjuryArea[]): boolean {
+  if (swaps[ex.slot] || target.startsWith('machine:')) return false;
+  const current = EXERCISE_BY_ID[ex.exerciseId];
+  // Alternatives are already limited to the user's equipment and ordered best-first.
+  const alt = ex.alternatives
+    .map((id) => EXERCISE_BY_ID[id])
+    .find((e) => e && e.pattern === current.pattern && station(e, equip) === target && !isRiskyFor(e, injuries));
+  if (!alt) return false;
+  const [repMin, repMax] = repRange(alt);
+  Object.assign(ex, {
+    exerciseId: alt.id,
+    repMin,
+    repMax,
+    rir: targetRir(alt),
+    alternatives: [current.id, ...ex.alternatives.filter((id) => id !== alt.id)],
+  });
+  return true;
 }
 
 export function primaryMuscle(e: Exercise): Muscle {
