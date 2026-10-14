@@ -163,7 +163,11 @@ export default function WorkoutScreen() {
             } else {
               const old = workout.exercises[picker.index];
               const plan = { ...defaultPlanFor(e), sets: old.sets.length, slot: old.slot };
-              const log = makeExerciseLog(e, plan, history, unit, !!workout.deload);
+              const fresh = makeExerciseLog(e, plan, history, unit, !!workout.deload);
+              // Sets already logged are what you actually did – keep them, just relabel the exercise.
+              const log = old.sets.some((s) => s.done)
+                ? { ...fresh, sets: old.sets, note: 'Exercise changed after logging – your logged sets were kept.', supersetWith: old.supersetWith }
+                : { ...fresh, supersetWith: old.supersetWith };
               await updateExercise(picker.index, log);
               if (permanent && old.slot && workout.phaseId !== undefined) await db.swaps.put({ key: `${workout.phaseId}:${old.slot}`, exerciseId });
             }
@@ -314,7 +318,7 @@ function ExerciseCard({
   );
 }
 
-function ExercisePicker({
+export function ExercisePicker({
   title,
   patternFilter,
   equipment,

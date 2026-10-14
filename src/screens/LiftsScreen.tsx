@@ -5,7 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { useActivePhase, useSettings } from '../hooks';
-import { EXERCISE_BY_ID } from '../engine/exercises';
+import { EXERCISE_BY_ID, availableEquipment } from '../engine/exercises';
+import { ExercisePicker } from './WorkoutScreen';
 import { completedSets, exerciseHistory, isStalled, plannedWeeklySets, type ProgramSession } from '../engine/program';
 import { MUSCLES, MUSCLE_LABEL } from '../engine/strength';
 import { formatLoad, getProgram, liftUnit, startFreeWorkout, startPlannedWorkout } from '../lib/lifting';
@@ -18,7 +19,9 @@ export default function LiftsScreen() {
   const navigate = useNavigate();
   const unit = liftUnit(settings);
   const workouts = useLiveQuery(() => db.workouts.orderBy('date').reverse().toArray(), []) ?? [];
-  const swapsVersion = useLiveQuery(() => db.swaps.count(), []);
+  // Re-read the programme whenever any swap is added or changed.
+  const swapsVersion = useLiveQuery(async () => JSON.stringify(await db.swaps.toArray()), []);
+  const [swapping, setSwapping] = useState<{ slot: string; exerciseId: string }>();
   const [program, setProgram] = useState<ProgramSession[]>();
 
   useEffect(() => {
@@ -167,10 +170,15 @@ export default function LiftsScreen() {
             <div className="spread small" key={e.slot} style={{ padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
               <span>
                 <Link to={`/lifts/exercise/${e.exerciseId}`}>{EXERCISE_BY_ID[e.exerciseId].name}</Link>
-                {e.superset && <span className="muted"> ⇄ superset</span>}
+                {e.superset && <span className="muted"> · superset</span>}
               </span>
-              <span className="muted">
-                {e.sets} × {e.repMin}–{e.repMax}
+              <span className="row" style={{ gap: 8 }}>
+                <span className="muted">
+                  {e.sets} × {e.repMin}–{e.repMax}
+                </span>
+                <button className="btn small" style={{ minHeight: 32, padding: '4px 10px' }} aria-label={`Change ${EXERCISE_BY_ID[e.exerciseId].name}`} onClick={() => setSwapping({ slot: e.slot, exerciseId: e.exerciseId })}>
+                  Change
+                </button>
               </span>
             </div>
           ))}
@@ -179,6 +187,23 @@ export default function LiftsScreen() {
       <button className="btn block" style={{ marginTop: 12 }} onClick={async () => navigate(`/lifts/workout/${await startFreeWorkout()}`)}>
         Start a free workout
       </button>
+
+      {swapping && (
+        <ExercisePicker
+          title={`Change ${EXERCISE_BY_ID[swapping.exerciseId].name}`}
+          patternFilter={EXERCISE_BY_ID[swapping.exerciseId].pattern}
+          equipment={availableEquipment(phase.profile.equipment, phase.profile.homeEquipment)}
+          showPermanent={false}
+          currentId={swapping.exerciseId}
+          injuries={phase.profile.injuries}
+          onClose={() => setSwapping(undefined)}
+          onPick={async (exerciseId) => {
+            // Permanent for this plan; workouts already logged keep what you actually did.
+            await db.swaps.put({ key: `${phase.id}:${swapping.slot}`, exerciseId });
+            setSwapping(undefined);
+          }}
+        />
+      )}
 
       <h3 className="section-title">History</h3>
       <div className="card">
