@@ -75,6 +75,11 @@ export function runKcal(weightKg: number, minutes: number, runWalk: boolean): nu
   return netMet * weightKg * (minutes / 60);
 }
 
+/** Net extra calories from a typical amateur match/session (~75 min at ~7 METs). */
+export function sportKcal(weightKg: number): number {
+  return 6 * weightKg * 1.25;
+}
+
 /** Reference weight for protein: current weight, unless BMI > 30 (then weight at BMI 27). */
 export function proteinReferenceKg(p: Profile): number {
   const h = p.heightCm / 100;

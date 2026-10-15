@@ -186,3 +186,29 @@ describe('adaptive coach', () => {
     expect(r.newTarget).toBe(2100);
   });
 });
+
+describe('regular sport (football on Saturday)', () => {
+  const football = [{ day: 5, name: 'Football' }];
+  const setups: Array<Partial<Profile>> = [
+    { liftExperience: 'intermediate', trainingDays: [0, 1, 2, 3, 4, 5, 6], allowDoubles: true, longRunDay: 6, goalRanking: ['muscle', 'fat', 'run'] },
+    { liftExperience: 'intermediate', trainingDays: [0, 1, 2, 3, 4, 6], allowDoubles: true, longRunDay: 6 },
+    { liftExperience: 'beginner', trainingDays: [0, 1, 3, 4, 6], allowDoubles: true, longRunDay: 6 },
+    { liftExperience: 'intermediate', trainingDays: [0, 2, 3, 4, 6], allowDoubles: false, longRunDay: 6 },
+  ];
+  for (const s of setups) {
+    it(`keeps legs and hard runs away from football (${s.trainingDays!.length} days, doubles ${s.allowDoubles})`, () => {
+      const phase = generatePhase({ ...base, runContinuousMin: 30, ...s, otherSports: football }, { startDate: START });
+      const friday = phase.template[4].sessions;
+      const saturday = phase.template[5].sessions;
+      expect(friday.some((x) => x.strengthKind === 'lower' || x.strengthKind === 'legs')).toBe(false);
+      expect(friday.some((x) => x.runSlot === 'long' || x.runSlot === 'quality')).toBe(false);
+      expect(saturday.some((x) => x.type === 'run' || x.strengthKind === 'lower' || x.strengthKind === 'legs')).toBe(false);
+    });
+  }
+
+  it('adds football to the calorie budget', () => {
+    const without = generatePhase({ ...base, runContinuousMin: 30 }, { startDate: START });
+    const withFootball = generatePhase({ ...base, runContinuousMin: 30, otherSports: football }, { startDate: START });
+    expect(withFootball.energy.exerciseKcalPerDay).toBeGreaterThan(without.energy.exerciseKcalPerDay);
+  });
+});

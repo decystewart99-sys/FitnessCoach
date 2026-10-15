@@ -292,6 +292,36 @@ const STEPS: Step[] = [
             onChange={(sessionMinutes) => set({ sessionMinutes })}
           />
         </Field>
+        <Field
+          label="Do you play another sport regularly?"
+          hint="e.g. football, 5-a-side, tennis. The plan keeps heavy leg work and hard runs away from the day before it."
+        >
+          <Segmented
+            value={d.otherSports?.length ? 'yes' : 'no'}
+            options={[
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+            ]}
+            onChange={(v) => set({ otherSports: v === 'yes' ? [{ day: 5, name: d.otherSports?.[0]?.name || 'Football' }] : [] })}
+          />
+        </Field>
+        {!!d.otherSports?.length && (
+          <>
+            <Field label="Which sport?">
+              <input
+                type="text"
+                value={d.otherSports[0].name}
+                onChange={(e) => set({ otherSports: d.otherSports!.map((s) => ({ ...s, name: e.target.value })) })}
+              />
+            </Field>
+            <Field label="Which day(s)?">
+              <DayPicker
+                days={d.otherSports.map((s) => s.day)}
+                onChange={(days) => set({ otherSports: days.map((day) => ({ day, name: d.otherSports![0].name || 'Football' })) })}
+              />
+            </Field>
+          </>
+        )}
         {(d.trainingDays?.length ?? 0) > 0 && (
           <Field label="Preferred long-run day" hint="Usually the day you have the most time.">
             <DayPicker days={d.longRunDay !== undefined ? [d.longRunDay] : []} onChange={(v) => set({ longRunDay: v[0] })} single />
@@ -303,6 +333,7 @@ const STEPS: Step[] = [
       const n = d.trainingDays?.length ?? 0;
       if (n < 2) return 'Pick at least 2 days (3–5 works best for combining lifting and running).';
       if (d.longRunDay !== undefined && !d.trainingDays!.includes(d.longRunDay)) return 'The long-run day needs to be one of your training days.';
+      if (d.otherSports?.some((s) => !s.name.trim())) return 'Give your other sport a name.';
     },
   },
   {

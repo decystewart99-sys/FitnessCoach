@@ -53,6 +53,8 @@ export interface Profile {
   allowDoubles: boolean;
   sessionMinutes: number;
   longRunDay?: number;
+  /** Regular sport outside this plan (e.g. football on Saturdays) – treated as a hard, leg-heavy day. */
+  otherSports?: Array<{ day: number; name: string }>;
 
   equipment: EquipmentSetup;
   homeEquipment: HomeEquip[];

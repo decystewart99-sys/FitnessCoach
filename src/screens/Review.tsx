@@ -25,7 +25,11 @@ export default function Review() {
       const a = (await getActivePhase()) ?? null;
       setDraft(s.draftProfile);
       setActive(a);
-      if (params.get('edit') && a) setOptions({ ...a.options, startDate: a.startDate });
+      if (params.get('edit') && a) {
+        // If regular sports changed, a schedule arranged by hand no longer fits – let the planner redo it.
+        const sportsChanged = JSON.stringify(s.draftProfile?.otherSports ?? []) !== JSON.stringify(a.profile.otherSports ?? []);
+        setOptions({ ...a.options, startDate: a.startDate, template: sportsChanged ? undefined : a.options.template });
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

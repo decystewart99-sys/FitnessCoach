@@ -4,7 +4,7 @@
 
 import type { Phase, PlannedSession } from '../types';
 import { addDays } from './dates';
-import { moveKey, sessionsOn, weekIndexFor } from './plan';
+import { moveKey, sessionsOn, sportOn, weekIndexFor } from './plan';
 import { weekRange } from './checkin';
 
 export interface Missed {
@@ -60,6 +60,12 @@ export function suggestDay(phase: Phase, session: PlannedSession, today: string,
     if (day.length >= maxPerDay || day.some((s) => s.type === session.type)) continue;
     const next = on(addDays(d, 1));
     const prev = on(addDays(d, -1));
+    const sportToday = !!sportOn(phase, d);
+    const sportNext = !!sportOn(phase, addDays(d, 1));
+    const sportPrev = !!sportOn(phase, addDays(d, -1));
+    if (legs(session) && (sportToday || sportNext)) continue;
+    if (session.type === 'run' && sportToday) continue;
+    if (hard(session) && (sportNext || sportPrev)) continue;
     if (legs(session) && (next.some(hard) || day.some((s) => s.runSlot === 'long'))) continue;
     // No leg sessions on back-to-back days.
     if (legs(session) && (next.some(legs) || prev.some(legs))) continue;

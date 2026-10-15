@@ -5,7 +5,7 @@ import type { DayPlan, Phase, PhaseOptions, PhaseWeek, PlannedSession, Profile, 
 import { buildSessions, placeSessions, scoreTemplate, sessionCounts, strengthSplit } from './schedule';
 import { planRunning, type RunWeek } from './running';
 import { buildStrengthPlan } from './strength';
-import { clampLossPct, computeEnergy, runKcal, strengthSessionKcal } from './energy';
+import { clampLossPct, computeEnergy, runKcal, sportKcal, strengthSessionKcal } from './energy';
 import { DAY_NAMES, today } from '../lib/dates';
 
 export const MIN_WEEKS = 6;
@@ -50,9 +50,9 @@ export function generatePhase(profile: Profile, options: PhaseOptions): Phase {
   if (options.template && sameSessions(options.template, sessions)) {
     template = options.template;
   } else {
-    template = placeSessions(sessions, p.trainingDays, p.allowDoubles, longRunDay ?? defaultLongRunDay(p.trainingDays));
+    template = placeSessions(sessions, p.trainingDays, p.allowDoubles, longRunDay ?? defaultLongRunDay(p.trainingDays), p.otherSports ?? []);
   }
-  const scheduleWarnings = scoreTemplate(template).issues;
+  const scheduleWarnings = scoreTemplate(template, undefined, p.otherSports ?? []).issues;
   const ordered = template.flatMap((d) => d.sessions);
   const runSessions = ordered.filter((s) => s.type === 'run');
 
@@ -68,7 +68,8 @@ export function generatePhase(profile: Profile, options: PhaseOptions): Phase {
     Object.values(w.runs).reduce((a, r) => a + runKcal(p.weightKg, r.minutes, r.kind === 'runwalk'), 0);
   const exerciseKcalPerDay =
     (strengthCount * strengthSessionKcal(p.weightKg, p.sessionMinutes) +
-      runWeeks.reduce((a, w) => a + avgRunKcal(w), 0) / runWeeks.length) /
+      runWeeks.reduce((a, w) => a + avgRunKcal(w), 0) / runWeeks.length +
+      (p.otherSports ?? []).length * sportKcal(p.weightKg)) /
     7;
   const energy = computeEnergy(p, exerciseKcalPerDay, options);
 

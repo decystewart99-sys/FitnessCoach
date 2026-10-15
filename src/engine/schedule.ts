@@ -95,15 +95,48 @@ function legLoad(s: PlannedSession): number {
 const isHardRun = (s: PlannedSession) => s.type === 'run' && (s.runSlot === 'quality' || s.runSlot === 'long');
 
 /** Lower = better. Also returns human-readable reasons for the worst conflicts. */
-export function scoreTemplate(template: DayPlan[], preferredLongRunDay?: number): { penalty: number; issues: string[] } {
+export interface SportDay {
+  day: number;
+  name: string;
+}
+
+export function scoreTemplate(template: DayPlan[], preferredLongRunDay?: number, sports: SportDay[] = []): { penalty: number; issues: string[] } {
   let penalty = 0;
   const issues: string[] = [];
   const byDay = (d: number) => template[(d + 7) % 7].sessions;
+  const sportOn = (d: number) => sports.find((s) => s.day === (d + 7) % 7);
 
   for (let d = 0; d < 7; d++) {
     const today = byDay(d);
     const tomorrow = byDay(d + 1);
     const yesterday = byDay(d - 1);
+
+    // Regular sport (e.g. football) counts as a hard, leg-heavy session the plan must work around.
+    const sportToday = sportOn(d);
+    const sportTomorrow = sportOn(d + 1);
+    const sportYesterday = sportOn(d - 1);
+    const legsNow = Math.max(0, ...today.map(legLoad));
+    if (sportTomorrow && legsNow > 0) {
+      penalty += 10 * legsNow;
+      issues.push(`${DAY_NAMES[d]}: leg training the day before ${sportTomorrow.name.toLowerCase()} – your legs won't be fresh for it.`);
+    }
+    if (sportToday && legsNow > 0) {
+      penalty += 12;
+      issues.push(`${DAY_NAMES[d]}: leg training on the same day as ${sportToday.name.toLowerCase()}.`);
+    }
+    if (sportYesterday && legsNow === 2) penalty += 4;
+    if (sportToday && today.some((s) => s.type === 'run')) {
+      penalty += today.some(isHardRun) ? 20 : 8;
+      if (today.some(isHardRun)) issues.push(`${DAY_NAMES[d]}: a hard run on the same day as ${sportToday.name.toLowerCase()}.`);
+    }
+    if (sportTomorrow && today.some(isHardRun)) {
+      penalty += 8;
+      issues.push(`${DAY_NAMES[d]}: a hard run the day before ${sportTomorrow.name.toLowerCase()}.`);
+    }
+    if (sportYesterday && today.some(isHardRun)) {
+      penalty += 6;
+      if (today.some((s) => s.runSlot === 'long')) issues.push(`${DAY_NAMES[d]}: long run the day after ${sportYesterday.name.toLowerCase()} – keep it gentle if your legs are tired.`);
+    }
 
     if (today.length >= 2) {
       penalty += 3;
@@ -161,7 +194,7 @@ function emptyWeek(): DayPlan[] {
 }
 
 /** Exhaustive search with pruning – the search space is small (≤ 9 sessions × ≤ 7 days). */
-export function placeSessions(sessions: PlannedSession[], availableDays: number[], allowDoubles: boolean, longRunDay?: number): DayPlan[] {
+export function placeSessions(sessions: PlannedSession[], availableDays: number[], allowDoubles: boolean, longRunDay?: number, sports: SportDay[] = []): DayPlan[] {
   const days = [...availableDays].sort((a, b) => a - b);
   const maxPerDay = allowDoubles ? 2 : 1;
   const ordered = [...sessions].sort((a, b) => priority(a) - priority(b));
@@ -176,9 +209,9 @@ export function placeSessions(sessions: PlannedSession[], availableDays: number[
 
   const recurse = (i: number) => {
     // Branch and bound: penalties only grow as sessions are added.
-    if (i > 0 && scoreTemplate(week, undefined).penalty - 1 >= bestScore) return;
+    if (i > 0 && scoreTemplate(week, undefined, sports).penalty - 1 >= bestScore) return;
     if (i === ordered.length) {
-      const { penalty } = scoreTemplate(week, preferred);
+      const { penalty } = scoreTemplate(week, preferred, sports);
       // Small tie-breaker: prefer spreading sessions across more days.
       const used = week.filter((d) => d.sessions.length > 0).length;
       const score = penalty - used * 0.1;
@@ -189,7 +222,10 @@ export function placeSessions(sessions: PlannedSession[], availableDays: number[
       return;
     }
     const s = ordered[i];
-    const candidates = s.runSlot === 'long' && preferred !== undefined ? [preferred] : days;
+    // The long run normally goes on the preferred day – unless that clashes with a regular sport,
+    // in which case every day is tried (missing the preference costs a penalty, so it's a last resort).
+    const sportClash = preferred !== undefined && sports.some((sp) => sp.day === preferred || (sp.day + 1) % 7 === preferred);
+    const candidates = s.runSlot === 'long' && preferred !== undefined && !sportClash ? [preferred] : days;
     const key = kindKey(s);
     const prevLast = lastDayOfKind[key];
     for (const d of candidates) {

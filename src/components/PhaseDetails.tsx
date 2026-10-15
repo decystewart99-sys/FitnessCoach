@@ -167,7 +167,14 @@ export default function PhaseDetails({ phase, settings, edit }: Props) {
           <div className="week-row" key={d.day}>
             <div className="day">{DAY_SHORT[d.day]}</div>
             <div>
-              {d.sessions.length === 0 && <span className="muted small">Rest</span>}
+              {(phase.profile.otherSports ?? [])
+                .filter((sp) => sp.day === d.day)
+                .map((sp) => (
+                  <div key={sp.name} style={{ marginBottom: 6 }}>
+                    <span className="badge">⚽ {sp.name}</span>
+                  </div>
+                ))}
+              {d.sessions.length === 0 && !(phase.profile.otherSports ?? []).some((sp) => sp.day === d.day) && <span className="muted small">Rest</span>}
               {d.sessions.map((s) => (
                 <div key={s.id} className="spread" style={{ marginBottom: 6 }}>
                   <SessionBadge s={s} />

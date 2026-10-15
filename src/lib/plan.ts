@@ -2,7 +2,7 @@
 
 import type { Phase, PlannedSession, RunPrescription } from '../types';
 import { addDays, daysBetween, weekday } from './dates';
-import { dayTarget, runKcal, strengthSessionKcal } from '../engine/energy';
+import { dayTarget, runKcal, sportKcal, strengthSessionKcal } from '../engine/energy';
 
 export interface DaySessions {
   date: string;
@@ -59,6 +59,11 @@ export function nextSessionDay(phase: Phase, after: string, maxDays = 14): DaySe
   return undefined;
 }
 
+/** Regular sport on this date (e.g. football), if any. */
+export function sportOn(phase: Phase, date: string): { day: number; name: string } | undefined {
+  return (phase.profile.otherSports ?? []).find((s) => s.day === weekday(date));
+}
+
 /** Calorie target for one day, shifted toward training days. */
 export function kcalFor(phase: Phase, date: string): number {
   const { weekIndex, sessions } = sessionsOn(phase, date);
@@ -71,5 +76,6 @@ export function kcalFor(phase: Phase, date: string): number {
       a + (session.type === 'strength' ? strengthSessionKcal(kg, phase.profile.sessionMinutes) : runKcal(kg, run?.minutes ?? 0, run?.kind === 'runwalk')),
     0,
   );
-  return dayTarget(base, dayKcal, phase.energy.exerciseKcalPerDay, phase.energy.floorKcal);
+  const sport = sportOn(phase, date) ? sportKcal(kg) : 0;
+  return dayTarget(base, dayKcal + sport, phase.energy.exerciseKcalPerDay, phase.energy.floorKcal);
 }

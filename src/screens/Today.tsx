@@ -6,7 +6,7 @@ import { checkinDue, weekRange } from '../lib/checkin';
 import { findMissed, withMove } from '../lib/reschedule';
 import { useActivePhase, useSettings } from '../hooks';
 import { addDays, DAY_NAMES, daysBetween, formatDate, mondayOf, today, weekday } from '../lib/dates';
-import { kcalFor, nextSessionDay, sessionsOn, weekIndexFor, type DaySessions } from '../lib/plan';
+import { kcalFor, nextSessionDay, sessionsOn, sportOn, weekIndexFor, type DaySessions } from '../lib/plan';
 import { RunDetail, WeekTags } from '../components/PhaseDetails';
 import { FoodCard, WeighInCard } from '../components/LogCards';
 import { HealthImportButton } from '../components/HealthImport';
@@ -83,6 +83,13 @@ export default function Today() {
         Protein ≈ {Math.round(phase.energy.proteinG / phase.profile.mealsPerDay)} g × {phase.profile.mealsPerDay} meals.
         {week?.tags.includes('diet_break') && ' Diet-break week: eat at maintenance.'}
       </p>
+
+      {!finished && !beforeStart && sportOn(phase, date) && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <b>⚽ {sportOn(phase, date)!.name} today</b>
+          <p className="small muted" style={{ margin: '4px 0 0' }}>Today's calorie target includes it. Have some carbs 2–3 hours before you play.</p>
+        </div>
+      )}
 
       {!finished && (
         <>
