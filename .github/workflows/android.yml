@@ -1,0 +1,89 @@
+# Builds the Android app (APK) on every push to main and publishes it as a GitHub release,
+# so it can be downloaded straight onto the phone. Signed with the permanent key stored in
+# repository secrets, so every build installs over the previous one and keeps your data.
+name: Build Android app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    env:
+      APP_VERSION_CODE: ${{ github.run_number }}
+      APP_VERSION_NAME: 1.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Without the signing secrets the app is still compiled (to catch errors) but never
+      # published: an APK signed with a different key can't update the installed app.
+      - name: Check signing secrets
+        id: signing
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Signing secrets are missing – building to check for errors only, nothing will be published. See android/README-signing.md"
+          fi
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+      - name: Build web app for Android
+        run: npm run build
+        env:
+          CAP_BUILD: '1'
+      - run: npx cap sync android
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Restore signing key
+        if: steps.signing.outputs.ready == 'true'
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Publish release
+        if: steps.signing.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APK="coach-${APP_VERSION_NAME}.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "$APK"
+          gh release create "android-${APP_VERSION_CODE}" "$APK" \
+            --title "Coach for Android ${APP_VERSION_NAME}" \
+            --notes "Download **${APK}** on your phone, open it and tap Install. Your data is kept when updating. Built from ${GITHUB_SHA::7}."
+          # Keep the 5 newest Android releases.
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | grep '^android-' | sort -t- -k2 -n -r | tail -n +6 | while read -r tag; do
+            gh release delete "$tag" --yes --cleanup-tag
+          done

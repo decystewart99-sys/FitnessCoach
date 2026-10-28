@@ -22,6 +22,11 @@ import PlanScreen from './screens/PlanScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import HealthSetup from './screens/HealthSetup';
 import { ImportLinkScreen } from './components/HealthImport';
+import HealthConnectScreen from './screens/HealthConnectScreen';
+import { App as NativeApp } from '@capacitor/app';
+import { getSettings } from './db';
+import { isAndroidApp, syncHealthConnect } from './lib/healthConnect';
+import { rescheduleReminders } from './lib/notifications';
 
 const icons = {
   today: (
@@ -77,6 +82,7 @@ function MainLayout() {
     // Once per phase per app start is enough.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaseId]);
+  useAndroidBackgroundTasks();
   if (phase === undefined) return null; // loading
   if (phase === null && location.pathname !== '/settings') return <Navigate to="/setup" replace />;
   return (
@@ -106,6 +112,26 @@ function MainLayout() {
       </nav>
     </>
   );
+}
+
+/** Android: sync Health Connect and re-plan reminders when the app opens or comes back to the front. */
+function useAndroidBackgroundTasks() {
+  useEffect(() => {
+    if (!isAndroidApp()) return;
+    const run = async () => {
+      try {
+        if ((await getSettings()).healthConnect) await syncHealthConnect();
+      } catch {
+        /* shown on the Health Connect screen when the user looks */
+      }
+      await rescheduleReminders().catch(() => undefined);
+    };
+    run();
+    const sub = NativeApp.addListener('resume', run);
+    return () => {
+      sub.then((s) => s.remove());
+    };
+  }, []);
 }
 
 function UpdateToast() {
@@ -146,6 +172,7 @@ export default function App() {
         <Route path="/runs/edit/:id" element={<RunForm />} />
         <Route path="/lifts/exercise/:exerciseId" element={<ExerciseScreen />} />
         <Route path="/settings/health" element={<HealthSetup />} />
+        <Route path="/settings/health-connect" element={<HealthConnectScreen />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<Today />} />
           <Route path="/weight" element={<WeightScreen />} />

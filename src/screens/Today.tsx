@@ -10,6 +10,7 @@ import { kcalFor, nextSessionDay, sessionsOn, sportOn, weekIndexFor, type DaySes
 import { RunDetail, WeekTags } from '../components/PhaseDetails';
 import { FoodCard, WeighInCard } from '../components/LogCards';
 import { HealthImportButton } from '../components/HealthImport';
+import { isAndroidApp } from '../lib/healthConnect';
 import type { Phase, Settings } from '../types';
 
 export default function Today() {
@@ -67,7 +68,15 @@ export default function Today() {
       <h3 className="section-title">Log today</h3>
       <WeighInCard settings={settings} compact />
       <FoodCard phase={phase} />
-      {settings.healthImport ? (
+      {isAndroidApp() ? (
+        <p className="small muted" style={{ marginTop: 8 }}>
+          {settings.lastHealthSyncAt ? (
+            <>Synced from Health Connect {new Date(settings.lastHealthSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · <Link to="/settings/health-connect">Sync now</Link></>
+          ) : (
+            <Link to="/settings/health-connect">Connect Health Connect to bring in Garmin and MyFitnessPal automatically →</Link>
+          )}
+        </p>
+      ) : settings.healthImport ? (
         <HealthImportButton />
       ) : (
         <p className="small" style={{ marginTop: 8 }}>

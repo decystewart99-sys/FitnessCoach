@@ -36,7 +36,7 @@ export function parseClock(raw: string | undefined): number | undefined {
   return undefined;
 }
 
-function guessKind(title: string, type: string): RunLogKind {
+export function guessKind(title: string, type: string): RunLogKind {
   const t = `${title} ${type}`.toLowerCase();
   if (/race|parkrun|marathon|10k race|5k race/.test(t)) return 'race';
   if (/time ?trial|\btt\b/.test(t)) return 'timetrial';

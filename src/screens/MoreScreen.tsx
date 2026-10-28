@@ -1,14 +1,18 @@
 import { Link } from 'react-router-dom';
+import { isAndroidApp } from '../lib/healthConnect';
+
+const android = isAndroidApp();
 
 const ITEMS = [
+  ...(android ? [{ to: '/settings/health-connect', title: 'Health Connect', sub: 'Garmin runs, steps, sleep, weight and MyFitnessPal food – synced automatically' }] : []),
   { to: '/checkin', title: 'Weekly check-in & trends', sub: 'Coach review, calorie adjustments, calories vs target, maintenance estimate' },
   { to: '/photos', title: 'Progress photos', sub: 'Weekly front, side and back photos with side-by-side comparison' },
   { to: '/health', title: 'Health', sub: 'Steps, resting heart rate and sleep from Garmin' },
-  { to: '/calendar', title: 'Add plan to Calendar', sub: 'Sessions and reminders with alerts in your iPhone Calendar' },
+  { to: '/calendar', title: 'Add plan to Calendar', sub: 'Planned sessions in your phone calendar' },
   { to: '/import/garmin', title: 'Import runs from Garmin', sub: 'Load a Garmin Connect activities CSV' },
   { to: '/plan', title: 'Plan', sub: 'Your phase: targets, schedule, running progression and the reasoning' },
-  { to: '/settings', title: 'Settings', sub: 'Units, questionnaire, backups' },
-  { to: '/settings/health', title: 'Import from Apple Health', sub: 'MyFitnessPal food totals and weight via an iPhone Shortcut' },
+  { to: '/settings', title: 'Settings', sub: android ? 'Units, reminders, questionnaire, backups, app updates' : 'Units, questionnaire, backups' },
+  ...(android ? [] : [{ to: '/settings/health', title: 'Import from Apple Health', sub: 'MyFitnessPal food totals and weight via an iPhone Shortcut' }]),
 ];
 
 export default function MoreScreen() {

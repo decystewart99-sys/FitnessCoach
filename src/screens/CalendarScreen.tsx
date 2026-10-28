@@ -1,10 +1,12 @@
-// Export the plan to the iPhone Calendar (.ics) so sessions and reminders come with alerts.
+// Export the plan as a calendar file (.ics) so sessions and reminders come with alerts.
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActivePhase } from '../hooks';
 import { buildIcs } from '../lib/ics';
 import { getProgram } from '../lib/lifting';
+import { saveFile } from '../lib/files';
+import { isAndroidApp } from '../lib/healthConnect';
 import { today } from '../lib/dates';
 import { Field, Segmented } from '../components/ui';
 
@@ -29,32 +31,18 @@ export default function CalendarScreen() {
       weighIn: weighIn ? { time: weighTime } : undefined,
       checkin,
     });
-    return new File([ics], 'coach-plan.ics', { type: 'text/calendar' });
+    return ics;
   };
+  const android = isAndroidApp();
 
   const open = async () => {
-    const file = await make();
-    // Safari shows an "Add All" calendar prompt when it opens an .ics file.
-    const url = URL.createObjectURL(file);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    setStatus('If iPhone shows the events, tap "Add All". If it saved a file instead, use "Share file" below.');
-  };
-
-  const share = async () => {
-    const file = await make();
-    if (navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: 'Coach plan' });
-      } catch {
-        /* cancelled */
-      }
-    } else setStatus('Sharing files isn\'t supported in this browser – use the button above.');
+    const result = await saveFile('coach-plan.ics', await make(), 'text/calendar', 'Coach plan');
+    if (result === 'cancelled') return;
+    setStatus(
+      android
+        ? 'Choose your calendar app (e.g. Samsung Calendar) from the share sheet, or save the file and open it from My Files.'
+        : 'If the calendar shows the events, tap "Add All". Otherwise open the saved file from Files.',
+    );
   };
 
   return (
@@ -64,7 +52,7 @@ export default function CalendarScreen() {
       </button>
       <h1>Add plan to Calendar</h1>
       <p className="muted small">
-        Puts your planned sessions (with exercises and run details) into your iPhone Calendar with alerts, from today to the end of the phase.
+        Puts your planned sessions (with exercises and run details) into your phone's calendar with alerts, from today to the end of the phase.{android && ' The app already sends its own reminders, so this is optional.'}
       </p>
 
       <div className="card">
@@ -109,9 +97,6 @@ export default function CalendarScreen() {
 
       <button className="btn primary block" style={{ marginTop: 12 }} onClick={open}>
         Add to Calendar
-      </button>
-      <button className="btn block" style={{ marginTop: 8 }} onClick={share}>
-        Share file…
       </button>
       {status && <div className="banner" style={{ marginTop: 12 }}>{status}</div>}
 

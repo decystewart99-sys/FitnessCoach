@@ -2,6 +2,7 @@
 
 import { db, getSettings, updateSettings } from '../db';
 import { today } from './dates';
+import { saveFile } from './files';
 import { decodePhoto, encodePhoto, type EncodedPhoto } from './photos';
 import type { ProgressPhoto } from '../types';
 
@@ -28,36 +29,12 @@ export async function buildBackup(includePhotos = false): Promise<BackupFile> {
   return { format: FORMAT, formatVersion: FORMAT_VERSION, exportedAt: new Date().toISOString(), tables };
 }
 
-/**
- * Hands the backup to the phone's share sheet (iPhone: "Save to Files" → iCloud Drive),
- * falling back to a normal download on desktop browsers.
- */
+/** Saves the backup via the share sheet (Drive, Files, email…) or a normal download. */
 export async function exportBackup(): Promise<'shared' | 'downloaded' | 'cancelled'> {
   const data = await buildBackup(!!(await getSettings()).backupPhotos);
-  const name = `fitness-coach-backup-${today()}.json`;
-  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-  const file = new File([blob], name, { type: 'application/json' });
-
-  if (navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: 'Fitness Coach backup' });
-      await updateSettings({ lastBackupAt: new Date().toISOString() });
-      return 'shared';
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return 'cancelled';
-      // otherwise fall through to download
-    }
-  }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  await updateSettings({ lastBackupAt: new Date().toISOString() });
-  return 'downloaded';
+  const result = await saveFile(`fitness-coach-backup-${today()}.json`, JSON.stringify(data), 'application/json', 'Fitness Coach backup');
+  if (result !== 'cancelled') await updateSettings({ lastBackupAt: new Date().toISOString() });
+  return result;
 }
 
 export async function readBackupFile(file: File): Promise<BackupFile> {

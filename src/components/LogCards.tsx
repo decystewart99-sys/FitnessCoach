@@ -8,6 +8,7 @@ import { NumberInput, WeightInput } from './ui';
 import { formatDate, today } from '../lib/dates';
 import { formatWeight } from '../lib/units';
 import { kcalFor } from '../lib/plan';
+import { rescheduleReminders } from '../lib/notifications';
 
 export function WeighInCard({ settings, date: fixedDate, compact }: { settings: Settings; date?: string; compact?: boolean }) {
   const [date, setDate] = useState(fixedDate ?? today());
@@ -30,6 +31,7 @@ export function WeighInCard({ settings, date: fixedDate, compact }: { settings: 
   const save = async () => {
     if (!kg || kg < 30 || kg > 350) return;
     await db.weights.put({ date, kg: Math.round(kg * 100) / 100 });
+    rescheduleReminders().catch(() => undefined); // drops today's weigh-in reminder
     setEditing(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);

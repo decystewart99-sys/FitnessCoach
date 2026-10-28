@@ -3,15 +3,20 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// CAP_BUILD=1 builds for the Android app: no service worker (the app ships its own files).
+const native = process.env.CAP_BUILD === '1';
+
 // Relative base so the app works at https://<user>.github.io/<repo>/ without hard-coding the repo name.
 export default defineConfig({
   base: './',
   define: {
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __APP_VERSION_CODE__: JSON.stringify(process.env.APP_VERSION_CODE ?? '0'),
   },
   plugins: [
     react(),
     VitePWA({
+      disable: native,
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {

@@ -202,6 +202,8 @@ export interface CheckIn {
   actions: Array<'diet_break' | 'deload'>;
 }
 
+export type ReminderKind = 'weighIn' | 'training' | 'food' | 'checkin' | 'photos';
+
 export interface Settings {
   id: 'settings';
   weightUnit: WeightUnit;
@@ -215,6 +217,11 @@ export interface Settings {
   backupPhotos?: boolean;
   /** Show the "Import from Health" button (set once the user has built the iPhone Shortcut). */
   healthImport?: boolean;
+  /** Android: sync from Health Connect when the app opens. */
+  healthConnect?: boolean;
+  lastHealthSyncAt?: string;
+  /** Android reminders; a time "HH:MM", or null when switched off. Undefined = default. */
+  reminders?: Partial<Record<ReminderKind, string | null>>;
   lastHealthImportAt?: string;
 }
 
@@ -239,6 +246,8 @@ export interface RunLog {
   rpe?: number;
   notes?: string;
   source: 'manual' | 'garmin' | 'health';
+  /** Health Connect record id, so a synced run is never imported twice. */
+  externalId?: string;
 }
 
 /** Daily wellness numbers (from Garmin via Apple Health, or entered by hand). */

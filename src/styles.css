@@ -1,4 +1,8 @@
 :root {
+  /* Safe areas (notch, status bar, gesture bar). Browsers give env(); the Android app also
+     injects --safe-area-inset-* variables, which older Android WebViews need. */
+  --sat: max(env(safe-area-inset-top), var(--safe-area-inset-top, 0px));
+  --sab: max(env(safe-area-inset-bottom), var(--safe-area-inset-bottom, 0px));
   --bg: #f5f6f8;
   --surface: #ffffff;
   --surface-2: #eef0f3;
@@ -95,10 +99,10 @@ a {
 .page {
   max-width: 640px;
   margin: 0 auto;
-  padding: calc(env(safe-area-inset-top) + 16px) 16px calc(var(--nav-h) + env(safe-area-inset-bottom) + 24px);
+  padding: calc(var(--sat) + 16px) 16px calc(var(--nav-h) + var(--sab) + 24px);
 }
 .page.no-nav {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+  padding-bottom: calc(var(--sab) + 24px);
 }
 
 .muted {
@@ -374,7 +378,7 @@ textarea {
 .step-footer {
   position: sticky;
   bottom: 0;
-  padding: 12px 0 calc(env(safe-area-inset-bottom) + 12px);
+  padding: 12px 0 calc(var(--sab) + 12px);
   background: linear-gradient(transparent, var(--bg) 25%);
   display: flex;
   gap: 10px;
@@ -390,8 +394,8 @@ textarea {
   left: 0;
   right: 0;
   bottom: 0;
-  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(var(--nav-h) + var(--sab));
+  padding-bottom: var(--sab);
   background: var(--surface);
   border-top: 1px solid var(--border);
   display: flex;
@@ -574,7 +578,7 @@ details.explain p {
   position: fixed;
   left: 16px;
   right: 16px;
-  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
+  bottom: calc(var(--nav-h) + var(--sab) + 12px);
   max-width: 600px;
   margin: 0 auto;
   background: var(--text);
@@ -803,7 +807,7 @@ ol.steps li {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px);
+  padding: 12px 16px calc(var(--sab) + 12px);
   background: var(--surface);
   border-top: 1px solid var(--border);
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
@@ -832,7 +836,7 @@ ol.steps li {
   max-height: 85dvh;
   overflow-y: auto;
   border-radius: 18px 18px 0 0;
-  padding: 16px 16px calc(env(safe-area-inset-bottom) + 16px);
+  padding: 16px 16px calc(var(--sab) + 16px);
 }
 
 /* Muscle volume bars */
