@@ -17,6 +17,10 @@ export interface HCDay {
   restingHr?: number;
   weightKg?: number;
   sleepMin?: number;
+  sleepDeepMin?: number;
+  sleepRemMin?: number;
+  sleepLightMin?: number;
+  sleepAwakeMin?: number;
 }
 
 export interface HCRun {
@@ -93,6 +97,19 @@ export function planSync(
         steps: d.steps ? Math.round(d.steps) : prev?.steps,
         restingHr: d.restingHr ? Math.round(d.restingHr) : prev?.restingHr,
         sleepMin: d.sleepMin ? Math.round(d.sleepMin) : prev?.sleepMin,
+        ...(d.sleepMin && (d.sleepDeepMin || d.sleepRemMin || d.sleepLightMin)
+          ? {
+              sleepDeepMin: Math.round(d.sleepDeepMin ?? 0),
+              sleepRemMin: Math.round(d.sleepRemMin ?? 0),
+              sleepLightMin: Math.round(d.sleepLightMin ?? 0),
+              sleepAwakeMin: Math.round(d.sleepAwakeMin ?? 0),
+            }
+          : {
+              sleepDeepMin: prev?.sleepDeepMin,
+              sleepRemMin: prev?.sleepRemMin,
+              sleepLightMin: prev?.sleepLightMin,
+              sleepAwakeMin: prev?.sleepAwakeMin,
+            }),
       });
     }
   }

@@ -10,6 +10,7 @@ import { kcalFor, nextSessionDay, sessionsOn, sportOn, weekIndexFor, type DaySes
 import { RunDetail, WeekTags } from '../components/PhaseDetails';
 import { FoodCard, WeighInCard } from '../components/LogCards';
 import { HealthImportButton } from '../components/HealthImport';
+import DailyOverview from '../components/DailyOverview';
 import { isAndroidApp } from '../lib/healthConnect';
 import type { Phase, Settings } from '../types';
 
@@ -31,6 +32,7 @@ export default function Today() {
     <div className="page">
       <p className="small muted">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
       <h1>Today</h1>
+      <DailyOverview phase={phase} settings={settings} />
 
       {needsBackup && daysBetween(phase.createdAt.slice(0, 10), date) >= 2 && (
         <Link to="/settings" className="banner" style={{ textDecoration: 'none' }}>

@@ -256,6 +256,11 @@ export interface HealthDay {
   steps?: number;
   restingHr?: number;
   sleepMin?: number;
+  /** Sleep stages in minutes, when the watch records them. */
+  sleepDeepMin?: number;
+  sleepRemMin?: number;
+  sleepLightMin?: number;
+  sleepAwakeMin?: number;
 }
 
 export type PhotoPose = 'front' | 'side' | 'back';

@@ -195,18 +195,34 @@ class HealthBridgePlugin : Plugin() {
                         SleepSessionRecord.STAGE_TYPE_AWAKE_IN_BED,
                         SleepSessionRecord.STAGE_TYPE_OUT_OF_BED,
                     )
-                    val minutes = mutableMapOf<LocalDate, Long>()
+                    // Per wake-up date: [asleep, deep, rem, light, awake] minutes.
+                    val totals = mutableMapOf<LocalDate, LongArray>()
                     for (s in readAll(SleepSessionRecord::class, sleepRange)) {
                         val wake = s.endTime.atZone(zone).toLocalDate()
                         if (wake.isBefore(start) || wake.isAfter(end)) continue
-                        val asleep = if (s.stages.isNotEmpty()) {
-                            s.stages.filter { it.stage !in awake }.sumOf { Duration.between(it.startTime, it.endTime).toMinutes() }
-                        } else {
-                            Duration.between(s.startTime, s.endTime).toMinutes()
+                        val t = totals.getOrPut(wake) { LongArray(5) }
+                        if (s.stages.isEmpty()) {
+                            t[0] += Duration.between(s.startTime, s.endTime).toMinutes()
+                            continue
                         }
-                        minutes[wake] = (minutes[wake] ?: 0L) + asleep
+                        for (st in s.stages) {
+                            val m = Duration.between(st.startTime, st.endTime).toMinutes()
+                            when (st.stage) {
+                                in awake -> t[4] += m
+                                SleepSessionRecord.STAGE_TYPE_DEEP -> { t[0] += m; t[1] += m }
+                                SleepSessionRecord.STAGE_TYPE_REM -> { t[0] += m; t[2] += m }
+                                SleepSessionRecord.STAGE_TYPE_LIGHT -> { t[0] += m; t[3] += m }
+                                else -> t[0] += m // "sleeping" without a stage, or unknown
+                            }
+                        }
                     }
-                    for ((d, m) in minutes) if (m > 0) day(d).put("sleepMin", m)
+                    for ((d, t) in totals) {
+                        if (t[0] <= 0) continue
+                        val o = day(d).put("sleepMin", t[0])
+                        if (t[1] + t[2] + t[3] > 0) {
+                            o.put("sleepDeepMin", t[1]).put("sleepRemMin", t[2]).put("sleepLightMin", t[3]).put("sleepAwakeMin", t[4])
+                        }
+                    }
                 }
 
                 call.resolve(JSObject().put("days", JSArray(days.values.toList())))

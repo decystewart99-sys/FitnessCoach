@@ -934,3 +934,64 @@ ol.steps li {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+
+/* Today at a glance */
+.overview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+.ov-tile {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  color: var(--text);
+  text-decoration: none;
+  min-width: 0;
+}
+.ov-wide {
+  grid-column: 1 / -1;
+}
+.ov-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.ov-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+.ov-unit {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.ov-sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ov-bar {
+  margin-top: 8px;
+}
+.ov-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  margin-top: 4px;
+  overflow: hidden;
+}
+.ov-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--series-1);
+}
+.ov-fill.over {
+  background: var(--warn);
+}
