@@ -4,8 +4,17 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateSettings } from '../db';
 import { useSettings } from '../hooks';
-import { HealthBridge, syncHealthConnect } from '../lib/healthConnect';
+import { HealthBridge, syncHealthConnect, type HCDiagnostic } from '../lib/healthConnect';
 import { rescheduleReminders } from '../lib/notifications';
+
+const APP_NAMES: Record<string, string> = {
+  'com.garmin.android.apps.connectmobile': 'Garmin Connect',
+  'com.myfitnesspal.android': 'MyFitnessPal',
+  'com.sec.android.app.shealth': 'Samsung Health',
+  'com.google.android.apps.healthdata': 'Health Connect',
+  'com.google.android.apps.fitness': 'Google Fit',
+};
+const appName = (pkg: string) => APP_NAMES[pkg] ?? pkg;
 
 type Status = 'loading' | 'unavailable' | 'update_required' | 'not_connected' | 'partial' | 'connected';
 
@@ -15,6 +24,7 @@ export default function HealthConnectScreen() {
   const [status, setStatus] = useState<Status>('loading');
   const [message, setMessage] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [diag, setDiag] = useState<HCDiagnostic[]>();
 
   const refresh = async () => {
     try {
@@ -106,6 +116,48 @@ export default function HealthConnectScreen() {
           </button>
         </div>
         {message && <div className="banner" style={{ marginTop: 12, marginBottom: 0 }}>{message}</div>}
+      </div>
+
+      <h3 className="section-title">Troubleshooting</h3>
+      <div className="card">
+        <p className="small" style={{ marginTop: 0 }}>
+          Shows what Health Connect holds for the last 7 days, whether Coach is allowed to read it, and which app wrote it.
+        </p>
+        <button
+          className="btn block"
+          disabled={busy}
+          onClick={async () => {
+            try {
+              setDiag((await HealthBridge.diagnostics()).types);
+            } catch (e) {
+              setMessage((e as Error).message);
+            }
+          }}
+        >
+          Check what Health Connect has
+        </button>
+        {diag && (
+          <div style={{ marginTop: 10 }}>
+            {diag.map((d) => (
+              <div className="list-row" key={d.type} style={{ alignItems: 'flex-start' }}>
+                <div className="grow">
+                  <div>{d.type}</div>
+                  <div className="small muted">
+                    {!d.granted
+                      ? 'Coach is not allowed to read this – tap "Allow the remaining data types" above'
+                      : d.error
+                        ? `Error: ${d.error}`
+                        : d.records
+                          ? `From: ${(d.sources ?? []).map(appName).join(', ')}`
+                          : 'Nothing in Health Connect for the last 7 days'}
+                  </div>
+                  {d.detail && <div className="small muted">{d.detail}</div>}
+                </div>
+                <span className={`badge ${!d.granted || d.error ? 'warn' : d.records ? 'accent' : ''}`}>{!d.granted ? 'No access' : d.error ? 'Error' : `${d.records ?? 0}`}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <h3 className="section-title">What Coach reads</h3>

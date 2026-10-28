@@ -36,13 +36,23 @@ export interface HCRun {
   treadmill: boolean;
 }
 
+export interface HCDiagnostic {
+  type: string;
+  granted: boolean;
+  records?: number;
+  sources?: string[];
+  detail?: string;
+  error?: string;
+}
+
 interface HealthBridgePlugin {
   availability(): Promise<{ status: 'available' | 'update_required' | 'unavailable' }>;
   grantedPermissions(): Promise<{ granted: string[]; all: boolean }>;
   requestHealthPermissions(): Promise<{ granted: string[]; all: boolean }>;
   openSettings(): Promise<void>;
-  readDaily(o: { start: string; end: string }): Promise<{ days: HCDay[] }>;
-  readRuns(o: { start: string; end: string }): Promise<{ runs: HCRun[] }>;
+  readDaily(o: { start: string; end: string }): Promise<{ days: HCDay[]; errors?: string[] }>;
+  readRuns(o: { start: string; end: string }): Promise<{ runs: HCRun[]; errors?: string[] }>;
+  diagnostics(): Promise<{ types: HCDiagnostic[] }>;
 }
 
 export const HealthBridge = registerPlugin<HealthBridgePlugin>('HealthBridge');
@@ -160,7 +170,14 @@ async function doSync(): Promise<SyncResult> {
   const settings = await getSettings();
   const end = today();
   const start = settings.lastHealthSyncAt ? addDays(settings.lastHealthSyncAt.slice(0, 10), -OVERLAP_DAYS) : addDays(end, -FIRST_SYNC_DAYS);
-  const [{ days }, { runs }] = await Promise.all([HealthBridge.readDaily({ start, end }), HealthBridge.readRuns({ start, end })]);
+  // Daily data and runs are read separately so a problem with one never blocks the other.
+  const [daily, runRead] = await Promise.allSettled([HealthBridge.readDaily({ start, end }), HealthBridge.readRuns({ start, end })]);
+  const days = daily.status === 'fulfilled' ? daily.value.days : [];
+  const runs = runRead.status === 'fulfilled' ? runRead.value.runs : [];
+  const problems = [
+    ...(daily.status === 'rejected' ? [`daily data: ${(daily.reason as Error)?.message}`] : daily.value.errors ?? []),
+    ...(runRead.status === 'rejected' ? [`runs: ${(runRead.reason as Error)?.message}`] : runRead.value.errors ?? []),
+  ];
 
   const existing = { weights: await db.weights.toArray(), health: await db.health.toArray(), runs: await db.runs.toArray() };
   const changes = planSync(days, runs, existing, (await getActivePhase()) ?? undefined);
@@ -172,7 +189,8 @@ async function doSync(): Promise<SyncResult> {
   });
   await updateSettings({ lastHealthSyncAt: new Date().toISOString() });
   const counts = { food: changes.nutrition.length, weights: changes.weights.length, health: changes.health.length, runs: changes.runs.length };
-  return { ok: true, message: describe(counts), changes: counts };
+  const message = describe(counts) + (problems.length ? ` Some data couldn't be read (${problems.join('; ')}).` : '');
+  return { ok: problems.length === 0, message, changes: counts };
 }
 
 function describe(c: { food: number; weights: number; health: number; runs: number }): string {

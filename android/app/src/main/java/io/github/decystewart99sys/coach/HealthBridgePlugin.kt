@@ -30,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
@@ -110,6 +111,61 @@ class HealthBridgePlugin : Plugin() {
         }
     }
 
+    /** Runs one data type's read; a failure is recorded instead of stopping everything else. */
+    private inline fun attempt(errors: JSArray, name: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (e: Exception) {
+            errors.put("$name: ${e.message ?: e.javaClass.simpleName}")
+        }
+    }
+
+    /**
+     * What Health Connect holds for the last 7 days, per data type: whether Coach may read it,
+     * how many records there are, and which apps wrote them. Used to troubleshoot syncing.
+     */
+    @PluginMethod
+    fun diagnostics(call: PluginCall) {
+        scope.launch {
+            try {
+                val granted = client().permissionController.getGrantedPermissions()
+                val end = Instant.now()
+                val filter = TimeRangeFilter.between(end.minus(Duration.ofDays(7)), end)
+                val out = JSArray()
+                suspend fun <T : Record> check(name: String, type: KClass<T>, describe: (List<T>) -> String? = { null }) {
+                    val o = JSObject().put("type", name).put("granted", granted.contains(perm(type)))
+                    if (granted.contains(perm(type))) {
+                        try {
+                            val recs = readAll(type, filter)
+                            o.put("records", recs.size)
+                            o.put("sources", JSArray(recs.map { it.metadata.dataOrigin.packageName }.distinct()))
+                            describe(recs)?.let { o.put("detail", it) }
+                        } catch (e: Exception) {
+                            o.put("error", e.message ?: e.javaClass.simpleName)
+                        }
+                    }
+                    out.put(o)
+                }
+                check("Food (nutrition)", NutritionRecord::class) { recs ->
+                    recs.maxByOrNull { it.endTime }?.let {
+                        "Latest: ${it.endTime.atZone(ZoneId.systemDefault()).toLocalDateTime().toString().replace('T', ' ').take(16)} – " +
+                            "${it.energy?.inKilocalories?.toInt() ?: "no"} kcal, ${it.protein?.inGrams?.toInt() ?: "no"} g protein"
+                    }
+                }
+                check("Weight", WeightRecord::class)
+                check("Steps", StepsRecord::class)
+                check("Resting heart rate", RestingHeartRateRecord::class)
+                check("Sleep", SleepSessionRecord::class)
+                check("Exercise sessions", ExerciseSessionRecord::class)
+                check("Distance", DistanceRecord::class)
+                check("Heart rate", HeartRateRecord::class)
+                call.resolve(JSObject().put("types", out))
+            } catch (e: Exception) {
+                call.reject(e.message ?: "Health Connect error")
+            }
+        }
+    }
+
     private suspend fun <T : Record> readAll(type: KClass<T>, filter: TimeRangeFilter): List<T> {
         val out = mutableListOf<T>()
         var token: String? = null
@@ -134,12 +190,13 @@ class HealthBridgePlugin : Plugin() {
                 val zone = ZoneId.systemDefault()
                 val granted = client().permissionController.getGrantedPermissions()
                 val days = sortedMapOf<String, JSObject>()
+                val errors = JSArray()
                 fun day(d: LocalDate): JSObject = days.getOrPut(d.toString()) { JSObject().put("date", d.toString()) }
                 val localRange = TimeRangeFilter.between(start.atStartOfDay(), end.plusDays(1).atStartOfDay())
                 val instantRange = TimeRangeFilter.between(start.atStartOfDay(zone).toInstant(), end.plusDays(1).atStartOfDay(zone).toInstant())
 
                 // Food: daily totals (Health Connect de-duplicates overlapping apps by its priority list).
-                if (granted.contains(perm(NutritionRecord::class))) {
+                if (granted.contains(perm(NutritionRecord::class))) attempt(errors, "Nutrition") {
                     val groups = client().aggregateGroupByPeriod(
                         AggregateGroupByPeriodRequest(
                             metrics = setOf(
@@ -162,7 +219,7 @@ class HealthBridgePlugin : Plugin() {
                     }
                 }
 
-                if (granted.contains(perm(StepsRecord::class))) {
+                if (granted.contains(perm(StepsRecord::class))) attempt(errors, "Steps") {
                     val groups = client().aggregateGroupByPeriod(
                         AggregateGroupByPeriodRequest(setOf(StepsRecord.COUNT_TOTAL), localRange, Period.ofDays(1)),
                     )
@@ -173,14 +230,14 @@ class HealthBridgePlugin : Plugin() {
                 }
 
                 // Resting HR: last reading of each day.
-                if (granted.contains(perm(RestingHeartRateRecord::class))) {
+                if (granted.contains(perm(RestingHeartRateRecord::class))) attempt(errors, "RestingHeartRate") {
                     for (r in readAll(RestingHeartRateRecord::class, instantRange).sortedBy { it.time }) {
                         day(r.time.atZone(zone).toLocalDate()).put("restingHr", r.beatsPerMinute)
                     }
                 }
 
                 // Weight: first (morning) reading of each day.
-                if (granted.contains(perm(WeightRecord::class))) {
+                if (granted.contains(perm(WeightRecord::class))) attempt(errors, "Weight") {
                     for (r in readAll(WeightRecord::class, instantRange).sortedByDescending { it.time }) {
                         day(r.time.atZone(zone).toLocalDate()).put("weightKg", r.weight.inKilograms)
                     }
@@ -188,7 +245,7 @@ class HealthBridgePlugin : Plugin() {
 
                 // Sleep: minutes asleep, credited to the day you woke up. Sessions that end after
                 // the range are included by widening the read window by a day.
-                if (granted.contains(perm(SleepSessionRecord::class))) {
+                if (granted.contains(perm(SleepSessionRecord::class))) attempt(errors, "SleepSession") {
                     val sleepRange = TimeRangeFilter.between(start.minusDays(1).atStartOfDay(zone).toInstant(), end.plusDays(1).atStartOfDay(zone).toInstant())
                     val awake = setOf(
                         SleepSessionRecord.STAGE_TYPE_AWAKE,
@@ -225,7 +282,7 @@ class HealthBridgePlugin : Plugin() {
                     }
                 }
 
-                call.resolve(JSObject().put("days", JSArray(days.values.toList())))
+                call.resolve(JSObject().put("days", JSArray(days.values.toList())).put("errors", errors))
             } catch (e: Exception) {
                 call.reject(e.message ?: "Health Connect error")
             }
@@ -248,6 +305,7 @@ class HealthBridgePlugin : Plugin() {
                 val range = TimeRangeFilter.between(start.atStartOfDay(zone).toInstant(), end.plusDays(1).atStartOfDay(zone).toInstant())
                 val runTypes = setOf(ExerciseSessionRecord.EXERCISE_TYPE_RUNNING, ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL)
                 val out = JSArray()
+                val errors = JSArray()
                 for (s in readAll(ExerciseSessionRecord::class, range)) {
                     if (s.exerciseType !in runTypes) continue
                     val origin = s.metadata.dataOrigin
@@ -260,18 +318,18 @@ class HealthBridgePlugin : Plugin() {
                         .put("title", s.title ?: "")
                         .put("origin", origin.packageName)
                         .put("treadmill", s.exerciseType == ExerciseSessionRecord.EXERCISE_TYPE_RUNNING_TREADMILL)
-                    if (granted.contains(perm(DistanceRecord::class))) {
+                    if (granted.contains(perm(DistanceRecord::class))) attempt(errors, "Distance") {
                         val agg = client().aggregate(AggregateRequest(setOf(DistanceRecord.DISTANCE_TOTAL), window, setOf(origin)))
                         agg[DistanceRecord.DISTANCE_TOTAL]?.let { o.put("distanceM", it.inMeters) }
                     }
-                    if (granted.contains(perm(HeartRateRecord::class))) {
+                    if (granted.contains(perm(HeartRateRecord::class))) attempt(errors, "HeartRate") {
                         val agg = client().aggregate(AggregateRequest(setOf(HeartRateRecord.BPM_AVG, HeartRateRecord.BPM_MAX), window, setOf(origin)))
                         agg[HeartRateRecord.BPM_AVG]?.let { o.put("avgHr", it) }
                         agg[HeartRateRecord.BPM_MAX]?.let { o.put("maxHr", it) }
                     }
                     out.put(o)
                 }
-                call.resolve(JSObject().put("runs", out))
+                call.resolve(JSObject().put("runs", out).put("errors", errors))
             } catch (e: Exception) {
                 call.reject(e.message ?: "Health Connect error")
             }
